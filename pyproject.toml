@@ -15,7 +15,6 @@ dependencies = [
     "astropy",
     "pandas",
     "requests",
-    "volightcurve",
 ]
 
 [project.optional-dependencies]

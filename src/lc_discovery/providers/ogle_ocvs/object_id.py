@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from lc_discovery.base import MissionArchiveMatch
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 _OGLE_LOOSE_NAME = re.compile(
     r"^\s*OGLE[\s\-]+([A-Za-z]+)[\s\-]+([A-Za-z]+)[\s\-]+(\d+)\s*$",

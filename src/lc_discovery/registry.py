@@ -14,7 +14,6 @@ from lc_discovery.providers.panstarrs1_dr2 import Panstarrs1Dr2Provider
 from lc_discovery.providers.personal_ts import PersonalTsProvider
 from lc_discovery.providers.upjs_ts import UpjsTsProvider
 from lc_discovery.providers.ztf import ZtfDr24Provider
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +40,12 @@ def get_provider(mission_id: str) -> MissionLightcurveProvider:
         MissionLightcurveProvider: Provider for the requested mission.
 
     Raises:
-        PipeException: If ``mission_id`` is unknown.
+        ValueError: If ``mission_id`` is unknown.
     """
     provider = PROVIDERS.get(mission_id)
     if provider is None:
         known = ", ".join(sorted(PROVIDERS)) or "(none)"
-        raise PipeException(f"Unknown mission '{mission_id}'. Registered missions: {known}.")
+        raise ValueError(f"Unknown mission '{mission_id}'. Registered missions: {known}.")
     return provider
 
 

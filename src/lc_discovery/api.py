@@ -35,7 +35,7 @@ def fetch(lc_key: str, *, force_refresh: bool = False) -> bytes:
         bytes: Calibrated VOTable for the reviewed missions.
 
     Raises:
-        PipeException: When the key or the mission is unknown, or the
+        ValueError: When the key or the mission is unknown, or the
             mission does not return VOTable bytes.
     """
     mission_id = decode_lc_key(lc_key)["mission_id"]
@@ -44,9 +44,7 @@ def fetch(lc_key: str, *, force_refresh: bool = False) -> bytes:
         force_refresh=force_refresh,
     )
     if not isinstance(payload, (bytes, bytearray)):
-        from skvo_veb.utils.my_tools import PipeException
-
-        raise PipeException(
+        raise ValueError(
             f"{mission_id}: fetch did not return VOTable bytes."
         )
     return bytes(payload)

@@ -6,7 +6,6 @@ import logging
 import xml.etree.ElementTree as ET
 
 from lc_discovery.providers.gaia_dr3_veb import config
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -74,16 +73,16 @@ def enrich_votable(payload: bytes) -> bytes:
         bytes: Enriched VOTable.
 
     Raises:
-        PipeException: When the document has no TABLE description, or is not XML.
+        ValueError: When the document has no TABLE description, or is not XML.
     """
     try:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: downloaded accref is not XML: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: downloaded accref is not XML: {exc}") from exc
 
     tables = [element for element in root.iter() if _local(element.tag) == "TABLE"]
     if not tables:
-        raise PipeException(f"{config.DISPLAY_NAME}: retrieved lightcurve has no TABLE.")
+        raise ValueError(f"{config.DISPLAY_NAME}: retrieved lightcurve has no TABLE.")
     table = tables[0]
     description = ""
     for child in list(table):
@@ -91,7 +90,7 @@ def enrich_votable(payload: bytes) -> bytes:
             description = child.text.strip()
             break
     if not description:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: retrieved lightcurve is missing TABLE description metadata."
         )
 

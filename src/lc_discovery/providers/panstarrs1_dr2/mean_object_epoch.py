@@ -7,7 +7,6 @@ from astropy.table import Table
 from astropy.time import Time
 
 from lc_discovery.providers.panstarrs1_dr2 import config
-from skvo_veb.utils.my_tools import PipeException
 
 
 def coosys_epoch_year_from_epoch_mean_mjd(epoch_mean_mjd: float) -> float:
@@ -38,17 +37,17 @@ def coosys_epoch_year_from_detection_table(
         float: COOSYS epoch in decimal years.
 
     Raises:
-        PipeException: When the column or a finite value is missing.
+        ValueError: When the column or a finite value is missing.
     """
     actual = column_map.get("epochmean")
     if actual is None:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: detection query result missing epochMean column."
         )
     values = np.asarray(detection_table[actual], dtype=np.float64)
     for value in values:
         if np.isfinite(value):
             return coosys_epoch_year_from_epoch_mean_mjd(float(value))
-    raise PipeException(
+    raise ValueError(
         f"{config.DISPLAY_NAME}: detection query returned no finite epochMean for COOSYS."
     )

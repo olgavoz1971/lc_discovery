@@ -21,7 +21,6 @@ from lc_discovery.providers.ztf.fetch_metadata import votable_from_epochs
 from lc_discovery.providers.ztf.oid import mission_archive_match_for_oid, parse_ztf_oid
 from lc_discovery.providers.ztf.tap_discovery import query_objects_by_oid, query_objects_cone
 from lc_discovery.providers.ztf.ztf_fetch import fetch_photometry_by_oid
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -190,15 +189,15 @@ class ZtfDr24Provider(MissionLightcurveProvider):
             bytes: Calibrated VOTable for that OID.
 
         Raises:
-            PipeException: When the key is invalid or fetch fails.
+            ValueError: When the key is invalid or fetch fails.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         oid_raw = payload.get("oid")
         if not oid_raw:
-            raise PipeException(f"{self.display_name}: lc_key payload missing oid.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing oid.")
 
         fetch_quality = config.FETCH_QUALITY_RAW
         if discovery_context is not None:
@@ -225,7 +224,7 @@ class ZtfDr24Provider(MissionLightcurveProvider):
                 ra_deg = dec_deg = None
 
         if filtercode is None or str(filtercode).strip() == "":
-            raise PipeException(
+            raise ValueError(
                 f"{self.display_name}: cannot resolve filtercode for oid={oid_raw}."
             )
 

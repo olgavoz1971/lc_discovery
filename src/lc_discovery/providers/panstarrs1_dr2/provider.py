@@ -25,7 +25,6 @@ from lc_discovery.providers.panstarrs1_dr2.ps1_names import (
 )
 from lc_discovery.providers.panstarrs1_dr2.tap_detection import fetch_detection_table
 from lc_discovery.tap.client import run_tap_sync_query
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -200,21 +199,21 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
             bytes: Calibrated VOTable for that filter.
 
         Raises:
-            PipeException: When the key is invalid or fetch fails.
+            ValueError: When the key is invalid or fetch fails.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         obj_id_raw = payload.get("obj_id")
         filter_name = payload.get("filter")
         if obj_id_raw is None or filter_name is None:
-            raise PipeException(f"{self.display_name}: lc_key payload missing obj_id or filter.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing obj_id or filter.")
 
         try:
             obj_id = int(obj_id_raw)
         except (TypeError, ValueError) as exc:
-            raise PipeException(f"{self.display_name}: invalid obj_id in lc_key.") from exc
+            raise ValueError(f"{self.display_name}: invalid obj_id in lc_key.") from exc
 
         ra_deg = float(payload["ra_deg"])
         dec_deg = float(payload["dec_deg"])

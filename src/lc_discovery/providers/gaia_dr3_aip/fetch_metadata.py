@@ -7,7 +7,6 @@ import xml.etree.ElementTree as ET
 
 from lc_discovery.providers.gaia_dr3_aip import config
 from lc_discovery.shared.gaia_epoch_mag_error import mag_error_from_flux_over_error
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -100,23 +99,23 @@ def _arrays_from_votable(payload: bytes) -> dict[str, list[str] | str]:
         dict: ``source_id`` and one token list per field name.
 
     Raises:
-        PipeException: When the document is not the expected single-row table.
+        ValueError: When the document is not the expected single-row table.
     """
     try:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: downloaded product is not XML: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: downloaded product is not XML: {exc}") from exc
     tables = [element for element in root.iter() if _local(element.tag) == "TABLE"]
     if len(tables) != 1:
-        raise PipeException(f"{config.DISPLAY_NAME}: epoch photometry VOTable has no single TABLE.")
+        raise ValueError(f"{config.DISPLAY_NAME}: epoch photometry VOTable has no single TABLE.")
     table = tables[0]
     fields = [field.get("name") for field in table if _local(field.tag) == "FIELD"]
     rows = [row for row in table.iter() if _local(row.tag) == "TR"]
     if len(rows) != 1:
-        raise PipeException(f"{config.DISPLAY_NAME}: epoch photometry VOTable is not one source row.")
+        raise ValueError(f"{config.DISPLAY_NAME}: epoch photometry VOTable is not one source row.")
     cells = [child for child in list(rows[0]) if _local(child.tag) == "TD"]
     if len(cells) != len(fields):
-        raise PipeException(f"{config.DISPLAY_NAME}: epoch photometry row does not match its fields.")
+        raise ValueError(f"{config.DISPLAY_NAME}: epoch photometry row does not match its fields.")
     found: dict[str, list[str] | str] = {}
     for name, cell in zip(fields, cells):
         if name == "source_id":
@@ -137,25 +136,25 @@ def votable_for_band(epoch: dict, band_code: str) -> bytes:
         bytes: Single-band VOTable.
 
     Raises:
-        PipeException: When the band or a required array is missing.
+        ValueError: When the band or a required array is missing.
     """
     spec = _BANDS.get(str(band_code).strip().upper())
     if spec is None:
-        raise PipeException(f"{config.DISPLAY_NAME}: unsupported band {band_code!r}.")
+        raise ValueError(f"{config.DISPLAY_NAME}: unsupported band {band_code!r}.")
     source_id = str(epoch.get("source_id") or "").strip()
     if not source_id:
-        raise PipeException(f"{config.DISPLAY_NAME}: epoch photometry is missing source_id.")
+        raise ValueError(f"{config.DISPLAY_NAME}: epoch photometry is missing source_id.")
     columns = [spec["time_in"], spec["snr_in"], spec["mag_in"]]
     columns.extend(item[0] for item in spec["extra"])
     series = []
     for name in columns:
         values = epoch.get(name)
         if not isinstance(values, list):
-            raise PipeException(f"{config.DISPLAY_NAME}: column {name} is missing.")
+            raise ValueError(f"{config.DISPLAY_NAME}: column {name} is missing.")
         series.append(values)
     length = len(series[0])
     if any(len(values) != length for values in series):
-        raise PipeException(f"{config.DISPLAY_NAME}: band {spec['filter_id']} arrays differ in length.")
+        raise ValueError(f"{config.DISPLAY_NAME}: band {spec['filter_id']} arrays differ in length.")
 
     kept = [
         index

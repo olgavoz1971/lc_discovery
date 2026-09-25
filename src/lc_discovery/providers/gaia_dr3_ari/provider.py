@@ -25,9 +25,8 @@ from lc_discovery.shared.gaia_dr3_source_id import (
     pick_gaia_archive_id_from_simbad,
 )
 from lc_discovery.tap.client import run_tap_sync_query
-from skvo_veb.utils.my_tools import PipeException
 from lc_discovery.providers.gaia_dr3_ari.datalink import build_timeseries_datalink_url
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
 
@@ -227,24 +226,24 @@ class GaiaDr3AriProvider(MissionLightcurveProvider):
             bytes: Enriched single-band VOTable. The Dash application parses it after this return.
 
         Raises:
-            PipeException: When the key is invalid or download fails.
+            ValueError: When the key is invalid or download fails.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         source_id = payload.get("source_id")
         access_url = payload.get("access_url")
         table_id = payload.get("table_id")
         if table_id is None:
-            raise PipeException(f"{self.display_name}: lc_key payload missing table_id.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing table_id.")
 
         if source_id:
             url = build_timeseries_datalink_url(source_id)
         elif access_url:
             url = str(access_url)
         else:
-            raise PipeException(f"{self.display_name}: lc_key payload missing source_id.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing source_id.")
 
         logger.info(
             "%s fetch url=%s table_id=%s force_refresh=%s",

@@ -31,8 +31,7 @@ from lc_discovery.shared.gaia_dr3_source_id import (
     pick_gaia_archive_id_from_simbad,
 )
 from lc_discovery.tap.client import run_tap_sync_query
-from skvo_veb.utils.my_tools import PipeException
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
 
@@ -219,10 +218,10 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
             bytes: Enriched VOTable. The Dash application parses it after this return.
 
         Raises:
-            PipeException: When the key is invalid or fetch fails validation.
+            ValueError: When the key is invalid or fetch fails validation.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         source_id = payload.get("source_id")
@@ -231,13 +230,13 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
         ra_deg = payload.get("ra_deg")
         dec_deg = payload.get("dec_deg")
         if source_id is None:
-            raise PipeException(f"{self.display_name}: lc_key payload missing source_id.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing source_id.")
         if not band:
-            raise PipeException(f"{self.display_name}: lc_key payload missing band.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing band.")
         if not filter_name:
-            raise PipeException(f"{self.display_name}: lc_key payload missing filter_name.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing filter_name.")
         if ra_deg is None or dec_deg is None:
-            raise PipeException(f"{self.display_name}: lc_key payload missing sky position.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing sky position.")
 
         if force_refresh:
             clear_epoch_photometry(source_id)
@@ -338,13 +337,13 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
             source_id (int): Gaia DR3 source identifier.
 
         Raises:
-            PipeException: When TAP returns no epoch photometry for the source.
+            ValueError: When TAP returns no epoch photometry for the source.
         """
         epoch_table = self._query_epoch_photometry([source_id])
         epoch_by_source = cache_dict_from_tap_table(epoch_table)
         epoch_payload = epoch_by_source.get(source_id)
         if epoch_payload is None:
-            raise PipeException(
+            raise ValueError(
                 f"{self.display_name}: TAP returned no epoch photometry for source_id {source_id}."
             )
         store_epoch_photometry(source_id, epoch_payload)

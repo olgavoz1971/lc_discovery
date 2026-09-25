@@ -25,8 +25,7 @@ from lc_discovery.providers.personal_ts.object_id import (
 from lc_discovery.providers.personal_ts.resolve_target import resolve_personal_target_name
 from lc_discovery.providers.personal_ts.ssa_catalog import map_ssa_table_to_catalog
 from lc_discovery.tap.client import run_tap_sync_query
-from skvo_veb.utils.my_tools import PipeException
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
 
@@ -204,15 +203,15 @@ class PersonalTsProvider(MissionLightcurveProvider):
             bytes: Enriched VOTable. The Dash application parses it after this return.
 
         Raises:
-            PipeException: When the key is invalid or download fails.
+            ValueError: When the key is invalid or download fails.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         accref = payload.get("accref")
         if not accref:
-            raise PipeException(f"{self.display_name}: lc_key payload missing accref.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing accref.")
 
         logger.info(
             "%s fetch accref=%s force_refresh=%s",

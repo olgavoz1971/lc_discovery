@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from lc_discovery.base import MissionArchiveMatch
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 _GAIA_ID_PATTERN = re.compile(r"^\d{10,22}$")
 _GAIA_PREFIX_PATTERN = re.compile(

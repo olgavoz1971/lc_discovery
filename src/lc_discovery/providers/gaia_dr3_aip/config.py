@@ -8,7 +8,7 @@ from pathlib import Path
 
 from lc_discovery.tap.adql import adql_top_limit_clause
 from lc_discovery.tap.dialect import TapQueryDialect
-from skvo_veb.utils.lc_config import JD_TO_MJD
+from lc_discovery.epoch import JD_TO_MJD
 
 PROVIDER_ID = "gaia_dr3_aip"
 DISPLAY_NAME = "Gaia DR3 (AIP)"

@@ -10,7 +10,6 @@ import pandas as pd
 import requests
 
 from lc_discovery.providers.ztf import config
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +29,19 @@ def fetch_photometry_by_oid(
         pandas.DataFrame: Epoch table from ``ztfquery``.
 
     Raises:
-        PipeException: When download fails or returns no rows.
+        ValueError: When download fails or returns no rows.
     """
     oid_int = int(oid)
     quality = str(fetch_quality or config.FETCH_QUALITY_RAW).strip().lower()
     if quality not in (config.FETCH_QUALITY_RAW, config.FETCH_QUALITY_BAD_CATFLAGS):
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: unsupported fetch_quality {fetch_quality!r}. "
             f"Use {config.FETCH_QUALITY_RAW!r} or {config.FETCH_QUALITY_BAD_CATFLAGS!r}."
         )
     try:
         from ztfquery import lightcurve
     except ImportError as exc:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: ztfquery is required but is not installed."
         ) from exc
 
@@ -58,12 +57,12 @@ def fetch_photometry_by_oid(
         response.raise_for_status()
         frame = _frame_from_irsa_votable(response.content)
     except Exception as exc:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: lightcurve download failed for oid={oid_int}: {exc}"
         ) from exc
 
     if frame is None or len(frame) == 0:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: no epoch photometry returned for oid={oid_int}."
         )
 
@@ -71,7 +70,7 @@ def fetch_photometry_by_oid(
         frame = _apply_bad_catflags_mask(frame)
 
     if frame is None or len(frame) == 0:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: no epochs remain after quality filtering "
             f"for oid={oid_int} (quality={quality!r})."
         )
@@ -103,25 +102,25 @@ def _frame_from_irsa_votable(payload: bytes) -> pd.DataFrame:
         pandas.DataFrame: One row per epoch.
 
     Raises:
-        PipeException: When the document is not a TABLEDATA VOTable.
+        ValueError: When the document is not a TABLEDATA VOTable.
     """
     try:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve is not XML: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve is not XML: {exc}") from exc
     tables = [element for element in root.iter() if _local(element.tag) == "TABLE"]
     if not tables:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable has no TABLE.")
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable has no TABLE.")
     table = tables[0]
     fields = [element for element in list(table) if _local(element.tag) == "FIELD"]
     if not fields:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable has no FIELD.")
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable has no FIELD.")
     meta: dict[str, dict[str, str]] = {}
     names: list[str] = []
     for field in fields:
         name = field.get("name")
         if not name:
-            raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve FIELD has no name.")
+            raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve FIELD has no name.")
         names.append(name)
         entry: dict[str, str] = {}
         for key in ("ucd", "unit", "datatype"):
@@ -134,14 +133,14 @@ def _frame_from_irsa_votable(payload: bytes) -> pd.DataFrame:
         meta[name] = entry
     data_nodes = [element for element in table.iter() if _local(element.tag) == "TABLEDATA"]
     if not data_nodes:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable is not TABLEDATA.")
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve VOTable is not TABLEDATA.")
     rows: list[list[str]] = []
     for tr in data_nodes[0]:
         if _local(tr.tag) != "TR":
             continue
         cells = [child.text or "" for child in list(tr) if _local(child.tag) == "TD"]
         if len(cells) != len(names):
-            raise PipeException(f"{config.DISPLAY_NAME}: IRSA lightcurve row does not match its fields.")
+            raise ValueError(f"{config.DISPLAY_NAME}: IRSA lightcurve row does not match its fields.")
         rows.append(cells)
     frame = pd.DataFrame(rows, columns=names)
     frame.attrs["irsa_fields"] = meta
@@ -158,10 +157,10 @@ def _apply_bad_catflags_mask(frame: pd.DataFrame) -> pd.DataFrame:
         pandas.DataFrame: Filtered copy.
 
     Raises:
-        PipeException: When ``catflags`` is missing from the table.
+        ValueError: When ``catflags`` is missing from the table.
     """
     if "catflags" not in frame.columns:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: catflags column missing; cannot apply "
             f"{config.FETCH_QUALITY_BAD_CATFLAGS!r} filtering."
         )

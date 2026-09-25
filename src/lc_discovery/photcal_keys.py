@@ -1,0 +1,11 @@
+"""Dictionary keys for a photometry calibration payload."""
+
+PHOTCAL_KEY_FILTER_IDENTIFIER = "filter_identifier"
+PHOTCAL_KEY_EFFECTIVE_WAVELENGTH = "effective_wavelength"
+PHOTCAL_KEY_EFFECTIVE_WAVELENGTH_UNIT = "effective_wavelength_unit"
+PHOTCAL_KEY_FILTER_NAME = "filter_name"
+PHOTCAL_KEY_ZP_FLUX = "zp_flux"
+PHOTCAL_KEY_ZP_FLUX_UNIT = "zp_flux_unit"
+PHOTCAL_KEY_ZP_MAG = "zp_mag"
+PHOTCAL_KEY_ZP_MAG_UNIT = "zp_mag_unit"
+PHOTCAL_KEY_MAG_SYS = "mag_sys"

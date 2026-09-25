@@ -32,8 +32,7 @@ from lc_discovery.shared.gaia_dr3_source_id import (
     parse_gaia_source_id,
     pick_gaia_archive_id_from_simbad,
 )
-from skvo_veb.utils.my_tools import PipeException
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
 
@@ -217,18 +216,18 @@ class AsassnProvider(MissionLightcurveProvider):
             bytes: Calibrated VOTable for that band.
 
         Raises:
-            PipeException: When the key is invalid or the band has no data.
+            ValueError: When the key is invalid or the band has no data.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         asas_sn_id = payload.get("asas_sn_id")
         band = payload.get("band")
         if not asas_sn_id:
-            raise PipeException(f"{self.display_name}: lc_key payload missing asas_sn_id.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing asas_sn_id.")
         if not band:
-            raise PipeException(f"{self.display_name}: lc_key payload missing band.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing band.")
 
         logger.info(
             "%s fetch asas_sn_id=%s band=%s force_refresh=%s",

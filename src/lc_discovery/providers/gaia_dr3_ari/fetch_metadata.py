@@ -10,7 +10,6 @@ import xml.etree.ElementTree as ET
 from astropy.io.votable import parse as parse_votable
 
 from lc_discovery.providers.gaia_dr3_ari import config
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -86,19 +85,19 @@ def _selected_data(payload: bytes, table_id: int) -> ET.Element:
         xml.etree.ElementTree.Element: DATA element for the kept columns.
 
     Raises:
-        PipeException: When ``table_id`` is out of range or the rewrite has no DATA.
+        ValueError: When ``table_id`` is out of range or the rewrite has no DATA.
     """
     votable = parse_votable(io.BytesIO(payload))
     tables = list(votable.iter_tables())
     if table_id < 0 or table_id >= len(tables):
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: table_id {table_id} is outside the downloaded VOTable."
         )
     table = tables[table_id]
     names = table.array.dtype.names
     missing = [name for name in _DROPPED_COLUMNS if name not in names]
     if missing:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: retrieved lightcurve is missing columns {missing}."
         )
     keep = [name for name in names if name not in _DROPPED_COLUMNS]
@@ -113,7 +112,7 @@ def _selected_data(payload: bytes, table_id: int) -> ET.Element:
     for child in list(written_tables[table_id]):
         if _local(child.tag) == "DATA":
             return child
-    raise PipeException(f"{config.DISPLAY_NAME}: selected table has no DATA element.")
+    raise ValueError(f"{config.DISPLAY_NAME}: selected table has no DATA element.")
 
 
 def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
@@ -134,17 +133,17 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
         bytes: Single-band enriched VOTable.
 
     Raises:
-        PipeException: When the document, the selected table, or its photcal is incomplete.
+        ValueError: When the document, the selected table, or its photcal is incomplete.
     """
     data = _selected_data(payload, int(table_id))
     try:
         root = ET.fromstring(payload)
     except ET.ParseError as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: downloaded product is not XML: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: downloaded product is not XML: {exc}") from exc
 
     tables = [element for element in root.iter() if _local(element.tag) == "TABLE"]
     if int(table_id) < 0 or int(table_id) >= len(tables):
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: table_id {table_id} is outside the downloaded VOTable."
         )
     table = tables[int(table_id)]
@@ -160,13 +159,13 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
             description = child.text.strip()
             break
     if not description:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: retrieved lightcurve is missing TABLE description metadata."
         )
 
     pf = _param(table, "pf")
     if pf is None or pf.get("value") in (None, ""):
-        raise PipeException(f"{config.DISPLAY_NAME}: TABLE PARAM pf is missing.")
+        raise ValueError(f"{config.DISPLAY_NAME}: TABLE PARAM pf is missing.")
     period = _param(table, "period")
     if period is None:
         period = ET.Element(pf.tag)
@@ -179,7 +178,7 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
     for name in _DROPPED_COLUMNS:
         field = _field(table, name)
         if field is None:
-            raise PipeException(f"{config.DISPLAY_NAME}: retrieved lightcurve is missing column {name}.")
+            raise ValueError(f"{config.DISPLAY_NAME}: retrieved lightcurve is missing column {name}.")
         table.remove(field)
 
     replaced = False
@@ -190,21 +189,21 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
             replaced = True
             break
     if not replaced:
-        raise PipeException(f"{config.DISPLAY_NAME}: selected table has no DATA element.")
+        raise ValueError(f"{config.DISPLAY_NAME}: selected table has no DATA element.")
 
     mag = _field(table, "mag")
     flux = _field(table, "flux")
     flux_error = _field(table, "flux_error")
     if mag is None or flux is None or flux_error is None:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: retrieved lightcurve is missing mag, flux, or flux_error."
         )
     flux_unit = flux.get("unit")
     if not flux_unit:
-        raise PipeException(f"{config.DISPLAY_NAME}: flux column has no unit.")
+        raise ValueError(f"{config.DISPLAY_NAME}: flux column has no unit.")
     group_id = mag.get("ref")
     if not group_id:
-        raise PipeException(f"{config.DISPLAY_NAME}: mag column does not reference a photcal.")
+        raise ValueError(f"{config.DISPLAY_NAME}: mag column does not reference a photcal.")
 
     groups = [
         element
@@ -213,11 +212,11 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
     ]
     mag_group = next((group for group in groups if group.get("ID") == group_id), None)
     if mag_group is None:
-        raise PipeException(f"{config.DISPLAY_NAME}: photcal group {group_id} is missing.")
+        raise ValueError(f"{config.DISPLAY_NAME}: photcal group {group_id} is missing.")
     filter_param = _param(mag_group, "filterIdentifier")
     filter_id = str(filter_param.get("value") or "").strip() if filter_param is not None else ""
     if filter_id not in config.GAIA_ARI_ZP_MAG_FOR_FLUX_BY_FILTER_IDENTIFIER:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: no flux magnitude zero point for filter {filter_id!r}."
         )
 
@@ -234,7 +233,7 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
     flux_group.set("ID", flux_group_id)
     flux_zp = _param(flux_group, "zeroPointFlux")
     if flux_zp is None:
-        raise PipeException(f"{config.DISPLAY_NAME}: zeroPointFlux is missing from the photcal group.")
+        raise ValueError(f"{config.DISPLAY_NAME}: zeroPointFlux is missing from the photcal group.")
     flux_zp.set("value", str(config.GAIA_ARI_ZP_FLUX))
     flux_zp.set("unit", flux_unit)
     flux_mag = _param(flux_group, "zeroPointReferenceMagnitude")

@@ -8,7 +8,6 @@ import pandas as pd
 from astroquery.ipac.irsa import Irsa
 
 from lc_discovery.providers.ztf import config
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ def query_objects_cone(
         pandas.DataFrame: Metadata rows (no epoch download).
 
     Raises:
-        PipeException: When the TAP query fails.
+        ValueError: When the TAP query fails.
     """
     radius_deg = float(radius_arcsec) / 3600.0
     columns = ", ".join(config.DISCOVERY_TAP_COLUMNS)
@@ -66,7 +65,7 @@ def query_objects_cone(
     try:
         return _tap_result_to_frame(Irsa.query_tap(query=query))
     except Exception as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA TAP cone query failed: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA TAP cone query failed: {exc}") from exc
 
 
 def query_objects_by_oid(oid: int | str) -> pd.DataFrame:
@@ -79,7 +78,7 @@ def query_objects_by_oid(oid: int | str) -> pd.DataFrame:
         pandas.DataFrame: Zero or one metadata rows.
 
     Raises:
-        PipeException: When the TAP query fails.
+        ValueError: When the TAP query fails.
     """
     oid_int = int(oid)
     columns = ", ".join(config.DISCOVERY_TAP_COLUMNS)
@@ -92,4 +91,4 @@ def query_objects_by_oid(oid: int | str) -> pd.DataFrame:
     try:
         return _tap_result_to_frame(Irsa.query_tap(query=query))
     except Exception as exc:
-        raise PipeException(f"{config.DISPLAY_NAME}: IRSA TAP oid query failed: {exc}") from exc
+        raise ValueError(f"{config.DISPLAY_NAME}: IRSA TAP oid query failed: {exc}") from exc

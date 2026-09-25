@@ -7,7 +7,6 @@ import logging
 from astropy.table import Table
 
 from lc_discovery.tap.dialect import TapQueryDialect
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +28,12 @@ def run_tap_sync_query(
         astropy.table.Table: Query result (possibly empty).
 
     Raises:
-        PipeException: When pyvo is unavailable or the TAP call fails.
+        ValueError: When pyvo is unavailable or the TAP call fails.
     """
     if not tap_url or not str(tap_url).strip():
-        raise PipeException("TAP URL is empty.")
+        raise ValueError("TAP URL is empty.")
     if not adql or not str(adql).strip():
-        raise PipeException("ADQL query is empty.")
+        raise ValueError("ADQL query is empty.")
 
     language = dialect.value if isinstance(dialect, TapQueryDialect) else str(dialect)
     logger.info(
@@ -47,7 +46,7 @@ def run_tap_sync_query(
     try:
         import pyvo
     except ImportError as exc:
-        raise PipeException("pyvo is required for TAP provider queries.") from exc
+        raise ValueError("pyvo is required for TAP provider queries.") from exc
 
     try:
         service = pyvo.dal.TAPService(tap_url)
@@ -60,7 +59,7 @@ def run_tap_sync_query(
             len(table),
         )
         return table
-    except PipeException:
+    except ValueError:
         raise
     except Exception as exc:
         logger.warning(
@@ -69,4 +68,4 @@ def run_tap_sync_query(
             language,
             exc,
         )
-        raise PipeException(f"TAP query failed: {exc}") from exc
+        raise ValueError(f"TAP query failed: {exc}") from exc

@@ -16,8 +16,6 @@ from lc_discovery.catalog_schema import (
 )
 from lc_discovery.discovery_fetch_context import DiscoveryFetchContext
 from lc_discovery.lc_key import cache_key, validate_lc_key
-from skvo_veb.utils.my_tools import PipeException
-from volightcurve import VOLightCurve
 
 logger = logging.getLogger(__name__)
 
@@ -106,17 +104,17 @@ class MissionLightcurveProvider(ABC):
         *,
         force_refresh: bool = False,
         discovery_context: DiscoveryFetchContext | None = None,
-    ) -> VOLightCurve:
-        """Fetches one lightcurve and returns a VO-standard in-memory object.
+    ) -> bytes:
+        """Fetches one lightcurve and returns the calibrated VOTable.
 
         Args:
             lc_key (str): Opaque fetch handle from a catalog row.
             force_refresh (bool): When True, bypass provider-local caches.
             discovery_context (DiscoveryFetchContext, optional): Discovery session
-                metadata for title enrichment (mission-specific).
+                metadata. Not part of the public package surface.
 
         Returns:
-            VOLightCurve: Parsed VO lightcurve compliant with the skvo_veb profile.
+            bytes: Calibrated VOTable.
         """
 
     def resolve_name(self, name: str) -> SkyCoord | None:
@@ -179,7 +177,7 @@ class MissionLightcurveProvider(ABC):
             str: SHA-256 hex digest.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
         return cache_key(lc_key)
 
     def default_search_radius_arcsec(self) -> float:
@@ -323,10 +321,10 @@ class MissionLightcurveProvider(ABC):
             tuple[float, float, float]: Validated ``(ra_deg, dec_deg, radius_arcsec)``.
 
         Raises:
-            PipeException: When required values are missing or invalid.
+            ValueError: When required values are missing or invalid.
         """
         if ra_deg is None or dec_deg is None or radius_arcsec is None:
-            raise PipeException(
+            raise ValueError(
                 f"{self.display_name}: cone search requires RA, Dec, and radius."
             )
         try:
@@ -334,15 +332,15 @@ class MissionLightcurveProvider(ABC):
             dec = float(dec_deg)
             radius = float(radius_arcsec)
         except (TypeError, ValueError) as exc:
-            raise PipeException(
+            raise ValueError(
                 f"{self.display_name}: RA, Dec, and radius must be numeric."
             ) from exc
         if radius <= 0:
-            raise PipeException(f"{self.display_name}: search radius must be positive.")
+            raise ValueError(f"{self.display_name}: search radius must be positive.")
         max_arcsec = self.max_discovery_search_radius_deg() * 3600.0
         if radius > max_arcsec:
             max_deg = self.max_discovery_search_radius_deg()
-            raise PipeException(
+            raise ValueError(
                 f"{self.display_name}: search radius {radius / 3600.0:g} deg exceeds "
                 f"the mission maximum of {max_deg:g} deg."
             )

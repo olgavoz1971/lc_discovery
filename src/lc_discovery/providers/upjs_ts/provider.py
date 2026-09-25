@@ -26,8 +26,7 @@ from lc_discovery.providers.upjs_ts import config
 from lc_discovery.providers.upjs_ts.fetch_metadata import enrich_votable
 from lc_discovery.providers.upjs_ts.resolve_target import resolve_upjs_target_name
 from lc_discovery.providers.upjs_ts.ssa_catalog import map_ssa_table_to_catalog
-from skvo_veb.utils.my_tools import PipeException
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
 
@@ -214,15 +213,15 @@ class UpjsTsProvider(MissionLightcurveProvider):
             bytes: Enriched VOTable. The Dash application parses it after this return.
 
         Raises:
-            PipeException: When the key is invalid or download fails.
+            ValueError: When the key is invalid or download fails.
         """
         if not self.validate_lc_key(lc_key):
-            raise PipeException(f"{self.display_name}: invalid lightcurve key.")
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
 
         payload = decode_lc_key(lc_key)["payload"]
         accref = payload.get("accref")
         if not accref:
-            raise PipeException(f"{self.display_name}: lc_key payload missing accref.")
+            raise ValueError(f"{self.display_name}: lc_key payload missing accref.")
 
         logger.info(
             "%s fetch accref=%s force_refresh=%s",

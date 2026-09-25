@@ -13,8 +13,7 @@ from numpy import isnan
 from lc_discovery.providers.asassn import config
 from lc_discovery.providers.asassn.skypatrol_client import create_skypatrol_client
 from lc_discovery.providers.asassn.skypatrol_cone_url import skypatrol_cone_centre_for_lookup_url
-from skvo_veb.utils.lc_config import resolve_catalog_epoch
-from skvo_veb.utils.my_tools import PipeException
+from lc_discovery.epoch import resolve_catalog_epoch
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +21,14 @@ _T = TypeVar("_T")
 
 
 def _raise_skypatrol_pipe_error(context: str, exc: Exception) -> None:
-    """Maps Sky Patrol client failures to a user-facing ``PipeException``.
+    """Maps Sky Patrol client failures to a user-facing ``ValueError``.
 
     Args:
         context (str): Short operation label (for example ``cone search``).
         exc (Exception): Failure raised by ``pyasassn`` or ``requests``.
 
     Raises:
-        PipeException: Always; never returns.
+        ValueError: Always; never returns.
     """
     if isinstance(exc, requests.HTTPError):
         response = exc.response
@@ -41,19 +40,19 @@ def _raise_skypatrol_pipe_error(context: str, exc: Exception) -> None:
             status,
             exc,
         )
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: Sky Patrol {context} failed (HTTP {status}). "
             "The service may be overloaded or reject this query - try again later "
             "or use a smaller search radius."
         ) from exc
     logger.error("%s Sky Patrol %s failed: %s", config.DISPLAY_NAME, context, exc)
-    raise PipeException(
+    raise ValueError(
         f"{config.DISPLAY_NAME}: Sky Patrol {context} failed: {exc}"
     ) from exc
 
 
 def _skypatrol_call(context: str, operation: Callable[[], _T]) -> _T:
-    """Runs a Sky Patrol client call and converts failures to ``PipeException``.
+    """Runs a Sky Patrol client call and converts failures to ``ValueError``.
 
     Args:
         context (str): Short operation label for error messages.
@@ -63,11 +62,11 @@ def _skypatrol_call(context: str, operation: Callable[[], _T]) -> _T:
         object: Return value from ``operation``.
 
     Raises:
-        PipeException: When the client or HTTP layer fails.
+        ValueError: When the client or HTTP layer fails.
     """
     try:
         return operation()
-    except PipeException:
+    except ValueError:
         raise
     except Exception as exc:
         _raise_skypatrol_pipe_error(context, exc)
@@ -84,11 +83,11 @@ def _ensure_dataframe(result: Any, *, context: str) -> pd.DataFrame:
         pandas.DataFrame: Catalogue metadata (possibly empty).
 
     Raises:
-        PipeException: When the response type is unexpected.
+        ValueError: When the response type is unexpected.
     """
     if isinstance(result, pd.DataFrame):
         return result
-    raise PipeException(f"{config.DISPLAY_NAME}: {context} did not return a pandas DataFrame.")
+    raise ValueError(f"{config.DISPLAY_NAME}: {context} did not return a pandas DataFrame.")
 
 
 def _discovery_column_list() -> list[str]:
@@ -208,7 +207,7 @@ def fetch_discovery_by_simbad_name(
         pandas.DataFrame: Zero or one discovery rows with ``pstarrs_g_mag``.
 
     Raises:
-        PipeException: When Simbad lookup fails or returns no ``asas_sn_id``.
+        ValueError: When Simbad lookup fails or returns no ``asas_sn_id``.
     """
     sp = client or create_skypatrol_client()
     lookup = _skypatrol_call(
@@ -219,7 +218,7 @@ def fetch_discovery_by_simbad_name(
     if len(lookup_df) == 0:
         return lookup_df
     if "asas_sn_id" not in lookup_df.columns:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: simbad_lookup result missing asas_sn_id."
         )
     asas_sn_id = lookup_df["asas_sn_id"].iloc[0]
@@ -239,14 +238,14 @@ def _photometry_dataframe(collection: Any) -> pd.DataFrame:
         pandas.DataFrame: Photometry table.
 
     Raises:
-        PipeException: When no photometry table is present.
+        ValueError: When no photometry table is present.
     """
     if isinstance(collection, pd.DataFrame):
         return collection
     data = getattr(collection, "data", None)
     if isinstance(data, pd.DataFrame):
         return data
-    raise PipeException(
+    raise ValueError(
         f"{config.DISPLAY_NAME}: lightcurve download did not contain photometry data."
     )
 
@@ -308,7 +307,7 @@ def fetch_photometry_by_asas_sn_id(
         pandas.DataFrame: All bands in one table (filter with ``phot_filter``).
 
     Raises:
-        PipeException: When the download is empty or fails.
+        ValueError: When the download is empty or fails.
     """
     sp = client or create_skypatrol_client()
     sid = int(asas_sn_id)
@@ -323,7 +322,7 @@ def fetch_photometry_by_asas_sn_id(
     )
     frame = _photometry_dataframe(result)
     if frame.empty:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: no photometry returned for asas_sn_id={sid}."
         )
     return frame
@@ -348,18 +347,18 @@ def slice_band_photometry(
         ``flux`` are removed. A missing ``flux_err`` is kept.
 
     Raises:
-        PipeException: When the band has no rows or columns are missing.
+        ValueError: When the band has no rows or columns are missing.
     """
     band_code = config.band_spec_for_code(band).band_code
     if "phot_filter" not in photometry.columns:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: downloaded table missing phot_filter column."
         )
     subset = photometry[photometry["phot_filter"] == band_code]
     required = ("jd", "flux", "flux_err")
     missing = [name for name in required if name not in subset.columns]
     if missing:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: photometry missing columns {missing}."
         )
     keep_cols = list(required)
@@ -367,7 +366,7 @@ def slice_band_photometry(
         keep_cols.append("camera")
     band_df = subset[keep_cols].dropna(subset=["jd", "flux"])
     if band_df.empty:
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: asas_sn_id {asas_sn_id} has no observations "
             f"with filter {band_code!r}."
         )

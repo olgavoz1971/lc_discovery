@@ -9,11 +9,6 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 
 from lc_discovery.providers.asassn import config
-from lc_discovery.shared.photcal_error_link import (
-    share_photcal_with_unlinked_errors,
-)
-from skvo_veb.utils.my_tools import PipeException
-from volightcurve import VOLightCurve
 
 _NS = "http://www.ivoa.net/xml/VOTable/v1.3"
 _UT_FILTER = "photDM:PhotometryFilter.identifier"
@@ -286,56 +281,3 @@ def _field(
         field.set("ID", field_id)
     if arraysize:
         field.set("arraysize", arraysize)
-
-
-def enrich_fetched_volightcurve(
-    volc: VOLightCurve,
-    *,
-    band_code: str,
-    asas_sn_id: int | str,
-) -> VOLightCurve:
-    """Applies ASAS-SN pipeline metadata expected by export and ``CurveDash``.
-
-    Args:
-        volc (VOLightCurve): Parsed lightcurve from ``build_volightcurve_from_band_table``.
-        band_code (str): ``g`` or ``V``.
-        asas_sn_id (int or str): Sky Patrol source identifier.
-
-    Returns:
-        VOLightCurve: Same instance with normalised ``table.meta``.
-
-    Raises:
-        PipeException: When band metadata cannot be resolved.
-    """
-    band = config.band_spec_for_code(band_code)
-    meta = volc.table.meta
-    if meta is None:
-        volc.table.meta = {}
-        meta = volc.table.meta
-
-    title = f"ASAS-SN {int(asas_sn_id)} {band.band_code}"
-    meta["name"] = title
-    meta["lightcurve_title"] = title
-    meta["title"] = title
-    meta["authors"] = [config.ASASSN_PIPELINE]
-    meta["mission"] = config.PROVIDER_ID
-    meta["band"] = band.band_code
-    meta["calibration_catalog"] = band.calibration_catalog
-    meta["photcal"] = config.photcal_dict_for_band(band.band_code)
-    meta["asas_sn_id"] = int(asas_sn_id)
-
-    description = meta.get("description") or meta.get("table_description")
-    if not description or not str(description).strip():
-        raise PipeException(
-            f"{config.DISPLAY_NAME}: lightcurve is missing TABLE description after build."
-        )
-
-    logger.debug(
-        "%s enriched asas_sn_id=%s band=%s n_points=%s",
-        config.DISPLAY_NAME,
-        asas_sn_id,
-        band.band_code,
-        len(volc),
-    )
-    share_photcal_with_unlinked_errors(volc)
-    return volc

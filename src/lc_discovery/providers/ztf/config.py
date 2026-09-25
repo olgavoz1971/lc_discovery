@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from skvo_veb.utils.lc_config import (
-    JD_TO_MJD,
+from lc_discovery.photcal_keys import (
     PHOTCAL_KEY_EFFECTIVE_WAVELENGTH,
     PHOTCAL_KEY_EFFECTIVE_WAVELENGTH_UNIT,
     PHOTCAL_KEY_FILTER_IDENTIFIER,

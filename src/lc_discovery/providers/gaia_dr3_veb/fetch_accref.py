@@ -6,7 +6,6 @@ import logging
 import urllib.error
 import urllib.request
 
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +27,11 @@ def fetch_votable_bytes(
         bytes: Archive VOTable, before enrichment.
 
     Raises:
-        PipeException: When the URL is missing or the download fails.
+        ValueError: When the URL is missing or the download fails.
     """
     url = str(accref or "").strip()
     if not url:
-        raise PipeException("Lightcurve accref URL is empty.")
+        raise ValueError("Lightcurve accref URL is empty.")
 
     try:
         request = urllib.request.Request(url, headers={"User-Agent": "lc_discovery"})
@@ -40,7 +39,7 @@ def fetch_votable_bytes(
             payload = response.read()
     except urllib.error.URLError as exc:
         logger.warning("accref download failed url=%s: %s", url, exc)
-        raise PipeException(f"Failed to download lightcurve from accref: {exc}") from exc
+        raise ValueError(f"Failed to download lightcurve from accref: {exc}") from exc
 
     logger.info("Fetched lightcurve VOTable from accref url=%s nbytes=%s", url, len(payload))
     return payload

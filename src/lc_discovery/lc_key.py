@@ -7,7 +7,6 @@ import json
 import logging
 from typing import Any
 
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -43,29 +42,29 @@ def decode_lc_key(lc_key: str) -> dict[str, Any]:
         dict: Parsed document with ``mission_id``, ``v``, and ``payload``.
 
     Raises:
-        PipeException: If the key is missing, malformed, or incomplete.
+        ValueError: If the key is missing, malformed, or incomplete.
     """
     if not lc_key or not str(lc_key).strip():
-        raise PipeException("Lightcurve key is empty.")
+        raise ValueError("Lightcurve key is empty.")
 
     try:
         document = json.loads(lc_key)
     except json.JSONDecodeError as exc:
-        raise PipeException(f"Invalid lightcurve key JSON: {exc}") from exc
+        raise ValueError(f"Invalid lightcurve key JSON: {exc}") from exc
 
     if not isinstance(document, dict):
-        raise PipeException("Lightcurve key must decode to a JSON object.")
+        raise ValueError("Lightcurve key must decode to a JSON object.")
 
     mission_id = document.get("mission_id")
     version = document.get("v")
     payload = document.get("payload")
 
     if not mission_id or not isinstance(mission_id, str):
-        raise PipeException("Lightcurve key is missing mission_id.")
+        raise ValueError("Lightcurve key is missing mission_id.")
     if version != LC_KEY_VERSION:
-        raise PipeException(f"Unsupported lightcurve key version: {version!r}.")
+        raise ValueError(f"Unsupported lightcurve key version: {version!r}.")
     if not isinstance(payload, dict):
-        raise PipeException("Lightcurve key payload must be a JSON object.")
+        raise ValueError("Lightcurve key payload must be a JSON object.")
 
     return document
 
@@ -82,7 +81,7 @@ def validate_lc_key(lc_key: str, *, mission_id: str | None = None) -> bool:
     """
     try:
         document = decode_lc_key(lc_key)
-    except PipeException:
+    except ValueError:
         return False
     if mission_id is not None and document["mission_id"] != mission_id:
         return False

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from lc_discovery.base import MissionArchiveMatch
-from skvo_veb.utils.simbad_resolver import SimbadResolveResult
+from lc_discovery.simbad import SimbadResolveResult
 
 _PERSONAL_OBJECT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
 

@@ -8,7 +8,6 @@ from astropy.table import Table
 
 from lc_discovery.providers.panstarrs1_dr2 import config
 from lc_discovery.tap.client import run_tap_sync_query
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +23,7 @@ def fetch_detection_table(*, obj_id: int, filter_name: str) -> Table:
         astropy.table.Table: Detection rows (possibly empty).
 
     Raises:
-        PipeException: When TAP fails or the filter name is invalid.
+        ValueError: When TAP fails or the filter name is invalid.
     """
     band = config.band_spec_for_filter_name(filter_name)
     adql = config.adql_detection_lightcurve(
@@ -37,7 +36,7 @@ def fetch_detection_table(*, obj_id: int, filter_name: str) -> Table:
             adql,
             dialect=config.TAP_QUERY_DIALECT,
         )
-    except PipeException:
+    except ValueError:
         raise
     except Exception as exc:
         logger.warning(
@@ -47,7 +46,7 @@ def fetch_detection_table(*, obj_id: int, filter_name: str) -> Table:
             filter_name,
             exc,
         )
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: detection query failed for objID={obj_id}."
         ) from exc
     logger.info(

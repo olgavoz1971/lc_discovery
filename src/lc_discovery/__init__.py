@@ -1,10 +1,8 @@
 """Multi-mission lightcurve search and fetch adapters.
 
-Mission providers return standard catalog tables from ``search_catalog`` and
-``VOLightCurve`` instances from ``fetch_lightcurve``. Dash pages convert VO
-lightcurves through ``utils.lc_bridge.volc_to_curvedash`` only at the UI boundary.
-
-See ``docs/mission_lightcurve_providers.md`` for the full contract.
+Mission providers return catalogue tables from ``search_catalog`` and
+calibrated VOTable bytes from ``fetch_lightcurve``. The Dash application
+parses those bytes into ``VOLightCurve`` only at the UI boundary.
 """
 
 from lc_discovery.base import (

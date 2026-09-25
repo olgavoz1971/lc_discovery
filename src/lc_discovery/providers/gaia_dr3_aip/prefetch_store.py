@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from lc_discovery.providers.gaia_dr3_aip import config
-from skvo_veb.utils.my_tools import PipeException
 
 logger = logging.getLogger(__name__)
 
@@ -75,17 +74,17 @@ def load_epoch_photometry(source_id: int | str) -> dict[str, Any]:
         dict: Cached epoch-photometry payload.
 
     Raises:
-        PipeException: When no prefetched record exists for the source.
+        ValueError: When no prefetched record exists for the source.
     """
     path = _cache_path(source_id)
     if not path.is_file():
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: no cached epoch photometry for source_id {source_id}."
         )
     with _STORE_LOCK:
         document = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(document, dict):
-        raise PipeException(
+        raise ValueError(
             f"{config.DISPLAY_NAME}: corrupt prefetch cache for source_id {source_id}."
         )
     return document
