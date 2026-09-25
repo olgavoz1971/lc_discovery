@@ -1,0 +1,19 @@
+# lc_discovery
+
+Catalogue search and calibrated light-curve fetch. The product of `fetch` is a VOTable in bytes.
+
+Standalone src-layout package (`import lc_discovery`). No Dash UI. Day-to-day edits belong in this tree. Install into the host app venv with `pip install -e`.
+
+This scaffold still imports `skvo_veb` for shared helpers (`PipeException`, coordinates, Simbad). The running app keeps using `skvo_veb/lc_providers/` until a later phase switches those imports.
+
+## Public calls
+
+```python
+from lc_discovery import list_missions, search, fetch
+
+list_missions()
+catalog = search("ogle_ocvs", object_name="OGLE-LMC-CEP-0001")
+payload = fetch(catalog["lc_key"][0])  # bytes
+```
+
+`search` takes a mission id plus that mission's catalogue arguments. `fetch` does not take a Dash session context.
