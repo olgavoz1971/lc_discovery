@@ -1,0 +1,435 @@
+<?xml version="1.0"?>
+<VOTABLE xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.ivoa.net/xml/VOTable/v1.3" xmlns:stc="http://www.ivoa.net/xml/STC/v1.30" version="1.4">
+  <RESOURCE name="TimeSeries">
+    <TIMESYS ID="J2016.5" timeorigin="2455197.5" timescale="TCB" refposition="barycenter"/>
+    <GROUP name="photcal" ID="phot_sys-G" ucd="phot" utype="timeseries:PhotometryPoint">
+      <DESCRIPTION>GAIA G filter, DR3</DESCRIPTION>
+      <PARAM name="filterIdentifier" ucd="meta.id;instr.filter" utype="photDM:PhotometryFilter.identifier" datatype="char" unit="" value="GAIADR3.G"/>
+      <PARAM name="zeroPointFlux" ucd="phot.mag;arith.zp" utype="photDM:PhotCal.zeroPoint.flux.value" datatype="float" unit="Jy" value="3296.2"/>
+      <PARAM name="magnitudeSystem" ucd="meta.code" utype="photDM:PhotCal.magnitudeSystem.type" datatype="char" unit="" value="Vega"/>
+      <PARAM name="effectiveWavelength" ucd="em.wl.effective" utype="photDM:PhotometryFilter.spectralLocation.value" datatype="float" unit="Angstrom" value="6230.0"/>
+    </GROUP>
+    <GROUP name="photcal" ID="phot_sys-Gbp" ucd="phot" utype="timeseries:PhotometryPoint">
+      <DESCRIPTION>GAIA Gbp filter, DR3</DESCRIPTION>
+      <PARAM name="filterIdentifier" ucd="meta.id;instr.filter" utype="photDM:PhotometryFilter.identifier" datatype="char" unit="" value="GAIADR3.Gbp"/>
+      <PARAM name="zeroPointFlux" ucd="phot.mag;arith.zp" utype="photDM:PhotCal.zeroPoint.flux.value" datatype="float" unit="Jy" value="3534.7"/>
+      <PARAM name="magnitudeSystem" ucd="meta.code" utype="photDM:PhotCal.magnitudeSystem.type" datatype="char" unit="" value="Vega"/>
+      <PARAM name="effectiveWavelength" ucd="em.wl.effective" utype="photDM:PhotometryFilter.spectralLocation.value" datatype="float" unit="Angstrom" value="5050.0"/>
+    </GROUP>
+    <GROUP name="photcal" ID="phot_sys-Grp" ucd="phot" utype="timeseries:PhotometryPoint">
+      <DESCRIPTION>GAIA Grp filter, DR3</DESCRIPTION>
+      <PARAM name="filterIdentifier" ucd="meta.id;instr.filter" utype="photDM:PhotometryFilter.identifier" datatype="char" unit="" value="GAIADR3.Grp"/>
+      <PARAM name="zeroPointFlux" ucd="phot.mag;arith.zp" utype="photDM:PhotCal.zeroPoint.flux.value" datatype="float" unit="Jy" value="2620.3"/>
+      <PARAM name="magnitudeSystem" ucd="meta.code" utype="photDM:PhotCal.magnitudeSystem.type" datatype="char" unit="" value="Vega"/>
+      <PARAM name="effectiveWavelength" ucd="em.wl.effective" utype="photDM:PhotometryFilter.spectralLocation.value" datatype="float" unit="Angstrom" value="7730.0"/>
+    </GROUP>
+  </RESOURCE>
+  <RESOURCE>
+    <TABLE name="Gaia DR3 4090664085620846720 - G band time series" nrows="20">
+      <DESCRIPTION>Time-series in band G about the source 4090664085620846720 of the Gaia-DR3 catalogue.</DESCRIPTION>
+      <PARAM datatype="long" name="source_id" ucd="meta.id;meta.main" value="4090664085620846720">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="ra" ucd="pos.eq.ra;meta.main" unit="deg" value="274.5873003514723">
+        <DESCRIPTION>Right ascension</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="dec" ucd="pos.eq.dec;meta.main" unit="deg" value="-21.706522062249086">
+        <DESCRIPTION>Declination</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="pf" ucd="src.var;time.period" unit="d" value="1.7217551595287013">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </PARAM>
+      <PARAM arraysize="4" datatype="char" name="Mission" ucd="meta.id;instr.obsty" value="Gaia"/>
+      <PARAM arraysize="10" datatype="char" name="dataProductType" value="timeseries"/>
+      <PARAM arraysize="3" datatype="char" name="Dataset Version" ucd="meta.version;meta.dataset" value="DR3"/>
+      <FIELD datatype="long" name="solution_id" ucd="meta.version">
+        <DESCRIPTION>Solution Identifier</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="long" name="source_id" ucd="meta.id;meta.main">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="band" ucd="instr.bandpass">
+        <DESCRIPTION>Photometric band. Values: G (per-transit combined SM-AF flux), BP (blue photometer integrated flux) and RP (red photometer integrated flux).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="transit_id" ucd="meta.id">
+        <DESCRIPTION>Transit unique identifier. For a given object, a transit comprises the different Gaia observations (SM, AF, BP, RP and RVS) obtained for each focal plane crossing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="time" ref="J2016.5" ucd="time.epoch" unit="d">
+        <DESCRIPTION>Different times are defined for each band. For G, it is the field-of-view transit averaged observation time. For BP and RP, it is the observation time of the BP CCD transit. The units are Barycentric JD (in TCB) in days -2,455,197.5, computed as follows. First the observation time is converted from On-board Mission Time (OBMT) into Julian date in TCB (Temps Coordonnee Barycentrique). Next a correction is applied for the light-travel time to the Solar system barycentre, resulting in Barycentric Julian Date (BJD). Finally, an offset of 2,455,197.5 days is applied (corresponding to a reference time $T_0$ at 2010-01-01T00:00:00) to have a conveniently small numerical value. Although the centroiding time accuracy of the individual CCD observations is (much) below 1~ms (e.g. in BP and RP), the G band observation time is averaged over typically 9 CCD observations taken in a time range of about 44sec.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="mag" ref="phot_sys-G" ucd="phot.mag;em.opt" unit="mag">
+        <DESCRIPTION>Band magnitude computed for the band flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux" ref="phot_sys-G" ucd="phot.flux;em.opt;stat.mean" unit="s**-1">
+        <DESCRIPTION>Band flux value for the transit. For G band, it is a combination of individual SM-AF CCD fluxes. For BP and RP bands, it is an integrated CCD flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux_error" ref="phot_sys-G" ucd="stat.error;phot.flux;em.opt" unit="e-/s">
+        <DESCRIPTION>Flux error. If the flux has been rejected or is unavailable, this error will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="float" name="flux_over_error" ucd="phot.flux;em.opt;stat">
+        <DESCRIPTION>Band flux divided by its error. If the flux has been rejected or is unavailable, this field will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_photometry" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC photometry processing.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_variability" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC variability processing (or variability analysis).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="other_flags" ucd="meta.code.status">
+        <DESCRIPTION>Additional processing flags. This field contains extra information on the data used to compute the fluxes and their quality. It provides debugging information that may be safely ignored for many general purpose applications. The field is a collection of binary flags, whose values can be recovered applying bit shifting and masking operations. Each band has different binary flags in different positions, as shown below. Bit numbering is as follows: least significant bit = 1 and most significant bit = 64 
+G band:
+	 Bit 1: SM transit rejected by photometry processing.
+	 Bit 2: AF1 transit rejected by photometry processing.
+	 Bit 3: AF2 transit rejected by photometry processing.
+	 Bit 4: AF3 transit rejected by photometry processing.
+	 Bit 5: AF4 transit rejected by photometry processing.
+	 Bit 6: AF5 transit rejected by photometry processing.
+	 Bit 7: AF6 transit rejected by photometry processing.
+	 Bit 8: AF7 transit rejected by photometry processing.
+	 Bit 9: AF8 transit rejected by photometry processing.
+	 Bit 10: AF9 transit rejected by photometry processing.
+	 Bit 13: G band flux scatter larger than expected by photometry processing (all CCDs considered).
+	 Bit 14: SM transit unavailable by photometry processing.
+	 Bit 15: AF1 transit unavailable by photometry processing.
+	 Bit 16: AF2 transit unavailable by photometry processing.
+	 Bit 17: AF3 transit unavailable by photometry processing.
+	 Bit 18: AF4 transit unavailable by photometry processing.
+	 Bit 19: AF5 transit unavailable by photometry processing.
+	 Bit 20: AF6 transit unavailable by photometry processing.
+	 Bit 21: AF7 transit unavailable by photometry processing.
+	 Bit 22: AF8 transit unavailable by photometry processing.
+	 Bit 23: AF9 transit unavailable by photometry processing.
+
+BP band:
+	 Bit 11: BP transit rejected by photometry processing.
+	 Bit 24: BP transit photometry rejected by variability processing.
+RP band:
+	 Bit 12: RP transit rejected by photometry processing.
+	 Bit 25: RP transit photometry rejected by variability processing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="p1" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the first overtone pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="p2" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the second overtone pulsation mode (for multi mode pulsators) in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="pf" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <DATA>
+        <BINARY>
+          <STREAM encoding="base64">
+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
+AAAAAAAAAAF/+AAAAAAAAAAAAAA/+4xPI15SEA==
+</STREAM>
+        </BINARY>
+      </DATA>
+    </TABLE>
+    <TABLE name="Gaia DR3 4090664085620846720 - BP band time series" nrows="14">
+      <DESCRIPTION>Time-series in band BP about the source 4090664085620846720 of the Gaia-DR3 catalogue.</DESCRIPTION>
+      <PARAM datatype="long" name="source_id" ucd="meta.id;meta.main" value="4090664085620846720">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="ra" ucd="pos.eq.ra;meta.main" unit="deg" value="274.5873003514723">
+        <DESCRIPTION>Right ascension</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="dec" ucd="pos.eq.dec;meta.main" unit="deg" value="-21.706522062249086">
+        <DESCRIPTION>Declination</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="pf" ucd="src.var;time.period" unit="d" value="1.7217551595287013">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </PARAM>
+      <PARAM arraysize="4" datatype="char" name="Mission" ucd="meta.id;instr.obsty" value="Gaia"/>
+      <PARAM arraysize="10" datatype="char" name="dataProductType" value="timeseries"/>
+      <PARAM arraysize="3" datatype="char" name="Dataset Version" ucd="meta.version;meta.dataset" value="DR3"/>
+      <FIELD datatype="long" name="solution_id" ucd="meta.version">
+        <DESCRIPTION>Solution Identifier</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="long" name="source_id" ucd="meta.id;meta.main">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="band" ucd="instr.bandpass">
+        <DESCRIPTION>Photometric band. Values: G (per-transit combined SM-AF flux), BP (blue photometer integrated flux) and RP (red photometer integrated flux).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="transit_id" ucd="meta.id">
+        <DESCRIPTION>Transit unique identifier. For a given object, a transit comprises the different Gaia observations (SM, AF, BP, RP and RVS) obtained for each focal plane crossing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="time" ref="J2016.5" ucd="time.epoch" unit="d">
+        <DESCRIPTION>Different times are defined for each band. For G, it is the field-of-view transit averaged observation time. For BP and RP, it is the observation time of the BP CCD transit. The units are Barycentric JD (in TCB) in days -2,455,197.5, computed as follows. First the observation time is converted from On-board Mission Time (OBMT) into Julian date in TCB (Temps Coordonnee Barycentrique). Next a correction is applied for the light-travel time to the Solar system barycentre, resulting in Barycentric Julian Date (BJD). Finally, an offset of 2,455,197.5 days is applied (corresponding to a reference time $T_0$ at 2010-01-01T00:00:00) to have a conveniently small numerical value. Although the centroiding time accuracy of the individual CCD observations is (much) below 1~ms (e.g. in BP and RP), the G band observation time is averaged over typically 9 CCD observations taken in a time range of about 44sec.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="mag" ref="phot_sys-Gbp" ucd="phot.mag;em.opt" unit="mag">
+        <DESCRIPTION>Band magnitude computed for the band flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux" ref="phot_sys-Gbp" ucd="phot.flux;em.opt;stat.mean" unit="s**-1">
+        <DESCRIPTION>Band flux value for the transit. For G band, it is a combination of individual SM-AF CCD fluxes. For BP and RP bands, it is an integrated CCD flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux_error" ref="phot_sys-Gbp" ucd="stat.error;phot.flux;em.opt" unit="e-/s">
+        <DESCRIPTION>Flux error. If the flux has been rejected or is unavailable, this error will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="float" name="flux_over_error" ucd="phot.flux;em.opt;stat">
+        <DESCRIPTION>Band flux divided by its error. If the flux has been rejected or is unavailable, this field will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_photometry" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC photometry processing.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_variability" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC variability processing (or variability analysis).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="other_flags" ucd="meta.code.status">
+        <DESCRIPTION>Additional processing flags. This field contains extra information on the data used to compute the fluxes and their quality. It provides debugging information that may be safely ignored for many general purpose applications. The field is a collection of binary flags, whose values can be recovered applying bit shifting and masking operations. Each band has different binary flags in different positions, as shown below. Bit numbering is as follows: least significant bit = 1 and most significant bit = 64 
+G band:
+	 Bit 1: SM transit rejected by photometry processing.
+	 Bit 2: AF1 transit rejected by photometry processing.
+	 Bit 3: AF2 transit rejected by photometry processing.
+	 Bit 4: AF3 transit rejected by photometry processing.
+	 Bit 5: AF4 transit rejected by photometry processing.
+	 Bit 6: AF5 transit rejected by photometry processing.
+	 Bit 7: AF6 transit rejected by photometry processing.
+	 Bit 8: AF7 transit rejected by photometry processing.
+	 Bit 9: AF8 transit rejected by photometry processing.
+	 Bit 10: AF9 transit rejected by photometry processing.
+	 Bit 13: G band flux scatter larger than expected by photometry processing (all CCDs considered).
+	 Bit 14: SM transit unavailable by photometry processing.
+	 Bit 15: AF1 transit unavailable by photometry processing.
+	 Bit 16: AF2 transit unavailable by photometry processing.
+	 Bit 17: AF3 transit unavailable by photometry processing.
+	 Bit 18: AF4 transit unavailable by photometry processing.
+	 Bit 19: AF5 transit unavailable by photometry processing.
+	 Bit 20: AF6 transit unavailable by photometry processing.
+	 Bit 21: AF7 transit unavailable by photometry processing.
+	 Bit 22: AF8 transit unavailable by photometry processing.
+	 Bit 23: AF9 transit unavailable by photometry processing.
+
+BP band:
+	 Bit 11: BP transit rejected by photometry processing.
+	 Bit 24: BP transit photometry rejected by variability processing.
+RP band:
+	 Bit 12: RP transit rejected by photometry processing.
+	 Bit 25: RP transit photometry rejected by variability processing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="p1" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the first overtone pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="p2" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the second overtone pulsation mode (for multi mode pulsators) in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="pf" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <DATA>
+        <BINARY>
+          <STREAM encoding="base64">
+BTVkghgADww4xPVQBuDwgAAAAAJCUAA+vbFt2ha8QJrQ3zyFFxxANfg1rG/X8kA2
+Q2bKMPQdQDGLfZrXchU/omxnRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUABFcmASXia8QJtZZbSjssRANOvm858ZrEBN
+OjUUco6OQC4Du1XL6/VAeUkpRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUABkPuYu0GA5QJ3Mgs77nqBAM/lPd/JNXkBh
+fVUQ7DqgQDDQUGw26QBBBSUoRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUABkQp7+TNalQJ3Mzpl7mv5AN+YIdDIqNkAO
+IrilmWK9QD2kgTHBvMQ+AiEERlQAAAAAAAAABX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUACFAq3gfCLlQKAz08rT40dANJYNe0XzPkBT
+5vIlelR0QC3ZYwf+bpZAqrCRRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUACFBmauxpZ5QKAz+a4o9m5ANO5yKBznr0BM
+9gsAJA5bQC6PJ+8t369AcpzJRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUACPI8aFuqBDQKCa8Kw62GpANT2RMrPQbkBF
+yVpiOlMYQDL5ppTjROtAEvbcRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUACu554m0DA1QKHeVlAgiEhANJilCD5A30BT
+t6dxBz6VQDDg7XZ3NPtAlYcsRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUACzIOZy9mPJQKIJV4A6fH1AOurzLDOipj/N
+47HAVyh7QDLR4S/LAhU8S0m3RlQAAAAAAAAIAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUADOyYhB0mdcQKMi6/f7zhNANQnTcYUbpkBK
+PoXitWtWQC6J91iwK+1AW/+mRkYAAAAAAAAQAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUADOzUERrsTtQKMjEdtTJO5ANswmGUG7tUAk
+xXYCp6+wQDMAxrdK8Cg/C+kuRkYAAAAAAEAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUADYp/HLNiJxQKOHYhaoeM5ANMEfQixStUBR
+C5YabryeQDEK/9Bu635AgARpRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUADy3ZuYyOYWQKSSOGUqG0dANZdW2pViwEA/
+i95VAZMEQC3mIxo/zUpABw14RkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJCUAD8iZqYQrD4QKT0sgcAD9tANILgFJQCVEBV
+UuNSfO/YQDLYlfX2+w5AkNQaRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+
+</STREAM>
+        </BINARY>
+      </DATA>
+    </TABLE>
+    <TABLE name="Gaia DR3 4090664085620846720 - RP band time series" nrows="15">
+      <DESCRIPTION>Time-series in band RP about the source 4090664085620846720 of the Gaia-DR3 catalogue.</DESCRIPTION>
+      <PARAM datatype="long" name="source_id" ucd="meta.id;meta.main" value="4090664085620846720">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="ra" ucd="pos.eq.ra;meta.main" unit="deg" value="274.5873003514723">
+        <DESCRIPTION>Right ascension</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="dec" ucd="pos.eq.dec;meta.main" unit="deg" value="-21.706522062249086">
+        <DESCRIPTION>Declination</DESCRIPTION>
+      </PARAM>
+      <PARAM datatype="double" name="pf" ucd="src.var;time.period" unit="d" value="1.7217551595287013">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </PARAM>
+      <PARAM arraysize="4" datatype="char" name="Mission" ucd="meta.id;instr.obsty" value="Gaia"/>
+      <PARAM arraysize="10" datatype="char" name="dataProductType" value="timeseries"/>
+      <PARAM arraysize="3" datatype="char" name="Dataset Version" ucd="meta.version;meta.dataset" value="DR3"/>
+      <FIELD datatype="long" name="solution_id" ucd="meta.version">
+        <DESCRIPTION>Solution Identifier</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="long" name="source_id" ucd="meta.id;meta.main">
+        <DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="band" ucd="instr.bandpass">
+        <DESCRIPTION>Photometric band. Values: G (per-transit combined SM-AF flux), BP (blue photometer integrated flux) and RP (red photometer integrated flux).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="transit_id" ucd="meta.id">
+        <DESCRIPTION>Transit unique identifier. For a given object, a transit comprises the different Gaia observations (SM, AF, BP, RP and RVS) obtained for each focal plane crossing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="time" ref="J2016.5" ucd="time.epoch" unit="d">
+        <DESCRIPTION>Different times are defined for each band. For G, it is the field-of-view transit averaged observation time. For BP and RP, it is the observation time of the BP CCD transit. The units are Barycentric JD (in TCB) in days -2,455,197.5, computed as follows. First the observation time is converted from On-board Mission Time (OBMT) into Julian date in TCB (Temps Coordonnee Barycentrique). Next a correction is applied for the light-travel time to the Solar system barycentre, resulting in Barycentric Julian Date (BJD). Finally, an offset of 2,455,197.5 days is applied (corresponding to a reference time $T_0$ at 2010-01-01T00:00:00) to have a conveniently small numerical value. Although the centroiding time accuracy of the individual CCD observations is (much) below 1~ms (e.g. in BP and RP), the G band observation time is averaged over typically 9 CCD observations taken in a time range of about 44sec.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="mag" ref="phot_sys-Grp" ucd="phot.mag;em.opt" unit="mag">
+        <DESCRIPTION>Band magnitude computed for the band flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux" ref="phot_sys-Grp" ucd="phot.flux;em.opt;stat.mean" unit="s**-1">
+        <DESCRIPTION>Band flux value for the transit. For G band, it is a combination of individual SM-AF CCD fluxes. For BP and RP bands, it is an integrated CCD flux.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="flux_error" ref="phot_sys-Grp" ucd="stat.error;phot.flux;em.opt" unit="e-/s">
+        <DESCRIPTION>Flux error. If the flux has been rejected or is unavailable, this error will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="float" name="flux_over_error" ucd="phot.flux;em.opt;stat">
+        <DESCRIPTION>Band flux divided by its error. If the flux has been rejected or is unavailable, this field will be set to null.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_photometry" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC photometry processing.</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="boolean" name="rejected_by_variability" ucd="meta.code.status">
+        <DESCRIPTION>Rejected by DPAC variability processing (or variability analysis).</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="long" name="other_flags" ucd="meta.code.status">
+        <DESCRIPTION>Additional processing flags. This field contains extra information on the data used to compute the fluxes and their quality. It provides debugging information that may be safely ignored for many general purpose applications. The field is a collection of binary flags, whose values can be recovered applying bit shifting and masking operations. Each band has different binary flags in different positions, as shown below. Bit numbering is as follows: least significant bit = 1 and most significant bit = 64 
+G band:
+	 Bit 1: SM transit rejected by photometry processing.
+	 Bit 2: AF1 transit rejected by photometry processing.
+	 Bit 3: AF2 transit rejected by photometry processing.
+	 Bit 4: AF3 transit rejected by photometry processing.
+	 Bit 5: AF4 transit rejected by photometry processing.
+	 Bit 6: AF5 transit rejected by photometry processing.
+	 Bit 7: AF6 transit rejected by photometry processing.
+	 Bit 8: AF7 transit rejected by photometry processing.
+	 Bit 9: AF8 transit rejected by photometry processing.
+	 Bit 10: AF9 transit rejected by photometry processing.
+	 Bit 13: G band flux scatter larger than expected by photometry processing (all CCDs considered).
+	 Bit 14: SM transit unavailable by photometry processing.
+	 Bit 15: AF1 transit unavailable by photometry processing.
+	 Bit 16: AF2 transit unavailable by photometry processing.
+	 Bit 17: AF3 transit unavailable by photometry processing.
+	 Bit 18: AF4 transit unavailable by photometry processing.
+	 Bit 19: AF5 transit unavailable by photometry processing.
+	 Bit 20: AF6 transit unavailable by photometry processing.
+	 Bit 21: AF7 transit unavailable by photometry processing.
+	 Bit 22: AF8 transit unavailable by photometry processing.
+	 Bit 23: AF9 transit unavailable by photometry processing.
+
+BP band:
+	 Bit 11: BP transit rejected by photometry processing.
+	 Bit 24: BP transit photometry rejected by variability processing.
+RP band:
+	 Bit 12: RP transit rejected by photometry processing.
+	 Bit 25: RP transit photometry rejected by variability processing.</DESCRIPTION>
+        <VALUES null="-9223372036854775808"/>
+      </FIELD>
+      <FIELD datatype="double" name="p1" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the first overtone pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD arraysize="*" datatype="char" name="p2" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the second overtone pulsation mode (for multi mode pulsators) in the G band time series</DESCRIPTION>
+      </FIELD>
+      <FIELD datatype="double" name="pf" ucd="src.var;time.period" unit="d">
+        <DESCRIPTION>Period corresponding to the fundamental pulsation mode in the G band time series</DESCRIPTION>
+      </FIELD>
+      <DATA>
+        <BINARY>
+          <STREAM encoding="base64">
+BTVkghgADww4xPVQBuDwgAAAAAJSUAA+vbFt2ha8QJrQ31LJqYtAMqa+5GuObUBx
+KMQYhJ2XQDTXsRSuxkdBUsJzRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUABFcmASXia8QJtZZcsiMVhAMnQblDjkPEB0
+lpj31jDRQDRbiBu/ghNBgXNiRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUABkPuYu0GA5QJ3MguZQvXhAMqUr/p7jeEBx
+QbWmmC9MQDPh3XwgK6VBXjF4RkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUABkQp7+TNalQJ3MzrCNsHlAMo/73TYHKUBy
+n6PCwkOnQDWtz6/dMINBW+uURkYAAAAAAAAABX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUACFAq3gfCLlQKAz09YgYj1AMr2STPRLZkBv
+nN+DzLDQQDSnWnLOOkJBQ+sDRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUACFBmauxpZ5QKAz+blLIr5AMlVmrfkEvUB2
+/kDytIWhQDR2ZlePdypBj9SNRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUACPI8aFuqBDQKCa8LePuohAMmVZ3fyY2EB1
+tfuHVTTAQDjVnJrrZ3JBX800RkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUACu554m0DA1QKHeVluPKqtAMoolfPcdkkBz
+BNPMfZ6hQDfrSz7EP6dBS43GRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUACzIOZy9mPJQKIJV4veGw9AMIuI5h1tK0Cd
+2cpeMAypQD4rlPq9qCRCfUn8VFQAAAAAAAAIAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUADOyYhB0mdcQKMi7AOV6mRAMk5AhgblGEB3
+l53StgvRQDOXok0WRSxBmiHbRkYAAAAAAAAQAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUADOzUERrsTtQKMjEebKctZAMq0WX63qjEBw
+xaywaou4QDUa2xkgBR9BS3HDRkYAAAAAAEAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUADYp/HLNiJxQKOHYiH2uRNAMqFBwNutYkBx
+gF/6FmPKQDYUd1fMEDxBSuqBRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUADy3ZuYyOYWQKSSOHDJU4tAMzrDmktmTUBk
+JhhAzQJcQDM+SRZTkhhBBgXrRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUAD5sB8QSMBuQKTXrte4gPdAMvtBhDqHkkBp
+Uiz57pW1QDPUHIQ6AllBI3SeRkYAAAAAAEAEAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+BTVkghgADww4xPVQBuDwgAAAAAJSUAD8iZqYQrD4QKT0shJtG4hAMmBxOfnRxkB2
+GQMVgsMAQDK4W1uRPD5BlxggRkYAAAAAAAAAAX/4AAAAAAAAAAAAAD/7jE8jXlIQ
+
+</STREAM>
+        </BINARY>
+      </DATA>
+    </TABLE>
+  </RESOURCE>
+</VOTABLE>

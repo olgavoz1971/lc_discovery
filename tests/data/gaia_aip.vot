@@ -1,0 +1,92 @@
+<?xml version='1.0'?>
+<VOTABLE version="1.4"
+ xmlns="http://www.ivoa.net/xml/VOTable/v1.3">
+<!--
+ !  VOTable written by STIL version 4.3-5 (uk.ac.starlink.votable.VOTableWriter)
+ !  at 2026-07-28T15:03:30
+ !-->
+<RESOURCE>
+<TABLE name="gaia_user_anonymous.2026-07-28-15-00-07-361959" nrows="1">
+<PARAM arraysize="2" datatype="char" name="QUERY_STATUS" value="OK"/>
+<PARAM arraysize="278" datatype="char" name="QUERY" value="SELECT 
+  source_id, g_transit_time, g_transit_flux, g_transit_flux_over_error,
+  g_transit_mag, g_transit_n_obs, bp_obs_time, bp_flux, 
+  bp_flux_over_error, bp_mag, rp_obs_time, rp_flux, rp_flux_over_error, rp_mag
+FROM gaiadr3.epoch_photometry
+WHERE source_id = 10655814178816"/>
+<PARAM arraysize="8" datatype="char" name="QUERY_LANGUAGE" value="adql-2.0"/>
+<PARAM arraysize="24" datatype="char" name="SOURCE" value="gaiadr3.epoch_photometry"/>
+<LINK title="gaiadr3.epoch_photometry" href="https://doi.org/10.17876/gaia/dr.3/55"/>
+<FIELD ID="datalinkID" datatype="long" name="source_id" ucd="meta.id;meta.main;meta.ref">
+<DESCRIPTION>Unique source identifier (unique within a particular Data Release)</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="g_transit_time" ucd="time.epoch" unit="d">
+<DESCRIPTION>Transit averaged G band observing time (reference epoch (BJD) 2010-01-01T00:00:00)</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="g_transit_flux" ucd="phot.flux;stat.mean" unit='"electron".s**-1'>
+<DESCRIPTION>Transit averaged G band flux</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="float" name="g_transit_flux_over_error" ucd="stat.snr;phot.flux;em.opt">
+<DESCRIPTION>Transit averaged G band flux divided by its error</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="g_transit_mag" ucd="phot.mag;em.opt" unit="mag">
+<DESCRIPTION>Transit averaged G band Vega magnitude</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="short" name="g_transit_n_obs" ucd="meta.number">
+<DESCRIPTION>Number of CCD observations contributing to transit averaged G band flux</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="bp_obs_time" ucd="time.epoch" unit="d">
+<DESCRIPTION>BP CCD transit observing time (reference epoch (BJD) 2010-01-01T00:00:00)</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="bp_flux" ucd="phot.flux;stat.mean" unit='"electron".s**-1'>
+<DESCRIPTION>BP band flux</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="float" name="bp_flux_over_error" ucd="stat.snr;phot.flux;em.opt.B">
+<DESCRIPTION>BP band flux divided by its error</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="bp_mag" ucd="phot.mag;em.opt.B" unit="mag">
+<DESCRIPTION>BP band Vega magnitude</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="rp_obs_time" ucd="time.epoch" unit="d">
+<DESCRIPTION>RP CCD transit observing time (reference epoch (BJD) 2010-01-01T00:00:00)</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="rp_flux" ucd="phot.flux;stat.mean" unit='"electron".s**-1'>
+<DESCRIPTION>RP band flux</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="float" name="rp_flux_over_error" ucd="stat.snr;phot.flux;em.opt.R">
+<DESCRIPTION>RP band flux divided by its error</DESCRIPTION>
+</FIELD>
+<FIELD arraysize="*" datatype="double" name="rp_mag" ucd="phot.mag;em.opt.R" unit="mag">
+<DESCRIPTION>RP band Vega magnitude</DESCRIPTION>
+</FIELD>
+<DATA>
+<TABLEDATA>
+  <TR>
+    <TD>10655814178816</TD>
+    <TD>1820.8582445068785 2013.8238611752959 2013.8978742516988 2067.1397937607753 2067.3159665807166 2195.581168307347 2220.8964950896507 2246.0624502301457 2246.1364501657963 2389.3718159999257 2389.4458367226107 2418.688149835204 2442.689066987086 2600.4175280985633 2620.9149683016713 2620.9889609900306</TD>
+    <TD>88.4427029996188 111.9332126821821 107.38546026397574 119.91350576077532 125.68656494896341 115.56347347027378 114.66917181278484 117.86805670276284 111.16039001011782 105.13957313828779 112.16786015978207 104.4884401000525 107.43448576279673 146.37881737940523 122.72002458471708 134.16915171066083</TD>
+    <TD>18.953098 35.671818 14.134124 32.038048 21.435091 23.20916 42.521385 28.186848 14.627686 22.365564 22.581196 19.404009 43.839386 3.353076 29.16796 39.21155</TD>
+    <TD>20.820711849343382 20.564969444648 20.610003159796424 20.49019661683444 20.43914472455841 20.530315399859386 20.538750177384102 20.508876558672828 20.5724917124421 20.632951343378444 20.562695779897915 20.639696252862784 20.609507593523972 20.273671281821343 20.465078283035865 20.36823518220249</TD>
+    <TD>9 9 9 9 9 8 8 9 9 8 9 9 9 8 9 7</TD>
+    <TD>NaN 2013.824175991924 2013.898188556091 2067.140108900182 2067.316280984657 2195.5815110299773 2220.8967818744018 NaN 2246.1367646002964 2389.372138040189 NaN NaN 2442.6893817945693 2600.4178708493787 2620.9152827539974 2620.989283712845</TD>
+    <TD>NaN 50.02119536688079 60.92343031534604 98.46241228767994 102.50012951988501 66.49032128954433 23.783341359526982 NaN 115.07244751824801 26.191248721685252 NaN NaN 157841.99293824387 124.99197404182677 64.96586837424123 151.18554907624576</TD>
+    <TD>NaN 2.763592 4.2699347 7.2412386 6.248145 3.655519 1.7895595 NaN 6.1642776 1.1731567 NaN NaN 828.7085 4.889544 3.75528 5.8671784</TD>
+    <TD>NaN 21.09065705093793 20.87658134465433 20.355366036799484 20.311731180373236 20.781646136993224 21.897860042565135 NaN 20.186113839894244 21.79315170379229 NaN NaN 12.34298582642162 20.096336898102376 20.806829096110604 19.889766511964766</TD>
+    <TD>NaN 2013.824262814028 2013.8982777757303 2067.140194101321 2067.31636967502 2195.58159843649 2220.8968681661945 2246.062853809447 2246.136853256234 2389.372223408542 NaN 2418.6885499463165 2442.689468876669 2600.4179581277053 2620.91537096986 2620.989371130907</TD>
+    <TD>NaN 128.36870228920998 1224.480103808764 52.32976200924867 67.34696176210835 100.16059071557785 35.634526749900566 114.27883933199361 52.65048144610354 1566.8893953334514 NaN 67.09300395365047 391.6258293583941 37.78167109523686 86.4760656898816 54.4567577536267</TD>
+    <TD>NaN 7.415036 52.913242 3.3161182 2.9858093 6.9741006 2.4564505 7.5451713 3.104001 51.033073 NaN 4.048264 22.99659 1.8276926 5.633545 2.9477088</TD>
+    <TD>NaN 19.476747624064554 17.028016169144834 20.451023602118635 20.17710048095196 19.746153308140126 20.868218012521837 19.602980949053894 20.444389634125322 16.760299647972438 NaN 20.1812024087325 18.26571718212993 20.80469259367304 19.905655694259885 20.40776604928127</TD>
+  </TR>
+</TABLEDATA>
+</DATA>
+</TABLE>
+<RESOURCE type="meta" utype="adhoc:service">
+  <PARAM name="accessURL" datatype="char" arraysize="*" value="https://gaia.aip.de/datalink/links"/>
+  <PARAM name="standardID" datatype="char" arraysize="*" value="ivo://ivoa.net/std/DataLink#links-1.0"/>
+  <GROUP name="inputParams">
+    <PARAM arraysize="*" datatype="char" name="ID" ref="datalinkID" value="">
+    </PARAM>
+  </GROUP>
+</RESOURCE>
+</RESOURCE>
+</VOTABLE>
