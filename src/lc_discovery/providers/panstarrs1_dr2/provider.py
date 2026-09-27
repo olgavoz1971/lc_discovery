@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 
 from astropy.table import Table
 
@@ -27,26 +25,6 @@ from lc_discovery.providers.panstarrs1_dr2.tap_detection import fetch_detection_
 from lc_discovery.tap.client import run_tap_sync_query
 
 logger = logging.getLogger(__name__)
-
-
-def _save_debug_votable(payload: bytes) -> None:
-    """Writes the issued VOTable where it leaves this plugin.
-
-    Files are ``lc_tmp_1.vot``, ``lc_tmp_2.vot``, and so on, in a temporary
-    directory for this plugin only.
-
-    Args:
-        payload (bytes): Issued VOTable.
-    """
-    folder = Path(tempfile.gettempdir()) / config.PROVIDER_ID
-    folder.mkdir(parents=True, exist_ok=True)
-    number = 1
-    while (folder / f"lc_tmp_{number}.vot").exists():
-        number += 1
-    path = folder / f"lc_tmp_{number}.vot"
-    path.write_bytes(payload)
-    logger.info("%s debug VOTable %s", config.DISPLAY_NAME, path)
-
 
 class Panstarrs1Dr2Provider(MissionLightcurveProvider):
     """Pan-STARRS1 DR2 epoch photometry via MAST TAP MeanObjectView and Detection."""
@@ -237,5 +215,4 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
             ra_deg=ra_deg,
             dec_deg=dec_deg,
         )
-        _save_debug_votable(payload)
         return payload

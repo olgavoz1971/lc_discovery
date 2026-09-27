@@ -9,7 +9,8 @@ pip install -e ".[dev]"
 ```
 
 Search for and retrieve light curves from the registered archives. The
-public calls are `list_missions`, `search`, and `fetch`.
+public calls are `list_missions`, `search`, `resolve_target`,
+`archive_id_from_identifiers`, and `fetch`.
 
 ## Reading order
 
@@ -19,11 +20,17 @@ public calls are `list_missions`, `search`, and `fetch`.
 4. [docs/adding_a_lightcurve_provider.md](docs/adding_a_lightcurve_provider.md): checklist for a new plugin.
 5. [docs/mission_lightcurve_providers.md](docs/mission_lightcurve_providers.md): plugin architecture inside this package. 
 
-Applications and agents import those three names from `lc_discovery`.
+Applications and agents import those names from `lc_discovery`.
 They do not call mission plugins, and they do not decode `lc_key`.
 
 ```python
-from lc_discovery import list_missions, search, fetch
+from lc_discovery import (
+    list_missions,
+    search,
+    resolve_target,
+    archive_id_from_identifiers,
+    fetch,
+)
 ```
 
 ## Public API
@@ -54,6 +61,22 @@ entry has:
 
 `list_missions()` does not return a provider object. There is no public
 call that hands one out.
+
+### `resolve_target(mission_id, name)`
+
+Maps a target string to a mission archive id. Does not query the
+catalogue. Returns `None` when the mission does not recognise the name,
+or a match with `archive_id`, `match_kind`, and `matched_label`. The
+caller then uses `search(..., archive_id=match.archive_id)`.
+
+Unknown `mission_id` raises `ValueError`.
+
+### `archive_id_from_identifiers(mission_id, identifiers, ...)`
+
+Picks a mission archive id from Simbad-style identifier strings. Pass
+the cross-identifier list; optionally `query_name` and `main_id`. Do
+not pass a Simbad client object. Returns the same match type as
+`resolve_target`, or `None`. Then call `search(..., archive_id=...)`.
 
 ### `search(mission_id, **kwargs)`
 
@@ -131,15 +154,22 @@ votable = parse(io.BytesIO(payload))
 ## What is not public
 
 Mission classes, `fetch_lightcurve`, `enrich_votable`, ADQL, TAP
-clients, and `encode_lc_key` / `decode_lc_key` are inside the package.
-`get_provider` is not an application interface. 
+clients, `get_provider`, and `encode_lc_key` / `decode_lc_key` are
+inside the package. The Discovery page, CurveDash, and Aladin stay in
+the application. 
 
 ## Examples
 
 Inspect what a mission accepts before choosing a search kind:
 
 ```python
-from lc_discovery import list_missions, search, fetch
+from lc_discovery import (
+    list_missions,
+    search,
+    resolve_target,
+    archive_id_from_identifiers,
+    fetch,
+)
 
 for mission in list_missions():
     caps = mission.capabilities
@@ -173,6 +203,26 @@ ZTF) do not take a Simbad-style name here.
 
 ```python
 catalog = search("ogle_ocvs", object_name="OGLE-LMC-RRLYR-13820")
+```
+
+If that table is empty, resolve a native spelling then search by archive
+id:
+
+```python
+match = resolve_target("ogle_ocvs", "OGLE SMC-ECL- 5425")
+if match is not None:
+    catalog = search("ogle_ocvs", archive_id=match.archive_id)
+```
+
+After Simbad, pass identifier strings (not a Simbad object):
+
+```python
+match = archive_id_from_identifiers(
+    "ogle_ocvs",
+    ["OGLE SMC-ECL- 5425", "TYC 1-2-1"],
+    query_name="OGLE SMC-ECL- 5425",
+    main_id="V* DP Peg",
+)
 ```
 
 ### Archive-id search

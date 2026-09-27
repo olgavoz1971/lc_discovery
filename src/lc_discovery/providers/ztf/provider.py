@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 
 from astropy.table import Table
 
@@ -23,23 +21,6 @@ from lc_discovery.providers.ztf.tap_discovery import query_objects_by_oid, query
 from lc_discovery.providers.ztf.ztf_fetch import fetch_photometry_by_oid
 
 logger = logging.getLogger(__name__)
-
-
-def _save_debug_votable(payload: bytes) -> None:
-    """Writes the issued VOTable where it leaves this plugin.
-
-    Args:
-        payload (bytes): Issued VOTable.
-    """
-    folder = Path(tempfile.gettempdir()) / config.PROVIDER_ID
-    folder.mkdir(parents=True, exist_ok=True)
-    number = 1
-    while (folder / f"lc_tmp_{number}.vot").exists():
-        number += 1
-    path = folder / f"lc_tmp_{number}.vot"
-    path.write_bytes(payload)
-    logger.info("%s debug VOTable %s", config.DISPLAY_NAME, path)
-
 
 class ZtfDr24Provider(MissionLightcurveProvider):
     """ZTF DR24 epoch photometry via IRSA TAP discovery and ``ztfquery`` fetch."""
@@ -235,7 +216,6 @@ class ZtfDr24Provider(MissionLightcurveProvider):
             ra_deg=ra_deg,
             dec_deg=dec_deg,
         )
-        _save_debug_votable(payload)
         return payload
 
     @staticmethod

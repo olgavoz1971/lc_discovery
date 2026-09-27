@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 
 from astropy.table import Table
 
@@ -35,26 +33,6 @@ from lc_discovery.shared.gaia_dr3_source_id import (
 from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
-
-
-def _save_debug_votable(payload: bytes) -> None:
-    """Writes the issued VOTable where it leaves this plugin.
-
-    Files are ``lc_tmp_1.vot``, ``lc_tmp_2.vot``, and so on, in a temporary
-    directory for this plugin only.
-
-    Args:
-        payload (bytes): Issued VOTable.
-    """
-    folder = Path(tempfile.gettempdir()) / config.PROVIDER_ID
-    folder.mkdir(parents=True, exist_ok=True)
-    number = 1
-    while (folder / f"lc_tmp_{number}.vot").exists():
-        number += 1
-    path = folder / f"lc_tmp_{number}.vot"
-    path.write_bytes(payload)
-    logger.info("%s debug VOTable %s", config.DISPLAY_NAME, path)
-
 
 class AsassnProvider(MissionLightcurveProvider):
     """ASAS-SN epoch photometry via the Sky Patrol client (no provider-side cache)."""
@@ -263,7 +241,6 @@ class AsassnProvider(MissionLightcurveProvider):
             epoch_jd=epoch_jd,
             period_days=period_days,
         )
-        _save_debug_votable(payload)
         return payload
 
     @staticmethod

@@ -1,10 +1,10 @@
 ---
 name: lc-discovery
 description: >-
-  Public contract of the lc_discovery package: list_missions, search, fetch
-  (VOTable bytes). Use when calling discovery from an app or agent, changing
-  api.py or registry, writing package tests, or discussing fetch vs Astropy
-  Table / VOTableFile.
+  Public contract of the lc_discovery package: list_missions, search,
+  resolve_target, archive_id_from_identifiers, fetch (VOTable bytes). Use when
+  calling discovery from an app or agent, changing api.py or registry, writing
+  package tests, or discussing fetch vs Astropy Table / VOTableFile.
 ---
 
 # lc_discovery public API
@@ -16,11 +16,13 @@ Read `README.md` first, then `docs/schema.md`.
 Applications import only:
 
 ```python
-from lc_discovery import list_missions, search, fetch
+from lc_discovery import list_missions, search, fetch, resolve_target, archive_id_from_identifiers
 ```
 
 - `list_missions()` returns descriptors and capability flags. It does not return a provider.
 - `search(mission_id, ...)` returns an Astropy catalogue `Table` with opaque `lc_key`.
+- `resolve_target(mission_id, name)` returns an archive-id match or `None`.
+- `archive_id_from_identifiers(mission_id, identifiers, ...)` picks an archive id from Simbad-style strings.
 - `fetch(lc_key)` returns **bytes** (enriched VOTable). Not `Table`, not `VOLightCurve`.
 
 Do not call `get_provider`, `fetch_lightcurve`, `enrich_votable`, or `decode_lc_key` from application code.

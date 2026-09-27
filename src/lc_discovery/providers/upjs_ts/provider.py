@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import logging
-import tempfile
-from pathlib import Path
 
 from astropy.table import Table
 
@@ -29,26 +27,6 @@ from lc_discovery.providers.upjs_ts.ssa_catalog import map_ssa_table_to_catalog
 from lc_discovery.simbad import SimbadResolveResult
 
 logger = logging.getLogger(__name__)
-
-
-def _save_debug_votable(payload: bytes) -> None:
-    """Writes the enriched VOTable where it leaves this plugin.
-
-    Files are ``lc_tmp_1.vot``, ``lc_tmp_2.vot``, and so on, in a temporary
-    directory for this plugin only.
-
-    Args:
-        payload (bytes): Enriched VOTable.
-    """
-    folder = Path(tempfile.gettempdir()) / config.PROVIDER_ID
-    folder.mkdir(parents=True, exist_ok=True)
-    number = 1
-    while (folder / f"lc_tmp_{number}.vot").exists():
-        number += 1
-    path = folder / f"lc_tmp_{number}.vot"
-    path.write_bytes(payload)
-    logger.info("%s debug VOTable %s", config.DISPLAY_NAME, path)
-
 
 class UpjsTsProvider(MissionLightcurveProvider):
     """UPJŠ time series via the ``upjs_ts.ts_ssa`` TAP table."""
@@ -230,7 +208,6 @@ class UpjsTsProvider(MissionLightcurveProvider):
             force_refresh,
         )
         enriched = enrich_votable(fetch_votable_bytes(str(accref)))
-        _save_debug_votable(enriched)
         return enriched
 
     def _catalog_by_ssa_targname(

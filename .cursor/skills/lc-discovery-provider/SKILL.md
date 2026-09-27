@@ -14,7 +14,7 @@ Read `docs/adding_a_lightcurve_provider.md` and `docs/schema.md`. Architecture d
 
 Plugins live under `src/lc_discovery/providers/<mission_id>/`. They return catalogue tables and **VOTable bytes**. They do not import Dash, `CurveDash`, or `volightcurve`. Enrich is the only step that may change the retrieved product. Every calibration change is written in that mission’s provider note first.
 
-Register the class in `src/lc_discovery/registry.py`. Applications still call `search` / `fetch`, not the class.
+Register the class in `src/lc_discovery/registry.py`. Applications still call `list_missions`, `search`, `resolve_target`, `archive_id_from_identifiers`, and `fetch`, not the class.
 
 ## Search
 
@@ -22,7 +22,7 @@ Implement `search_catalog` with cone, name, and/or archive id according to `Miss
 
 ## Fetch
 
-`fetch_lightcurve` returns enriched bytes. Do not copy a per-plugin `_save_debug_votable`. A shared debug write belongs on `api.fetch` when that phase is implemented.
+`fetch_lightcurve` returns enriched bytes. Do not write VOTables to disk for debugging.
 
 ## Tests
 
