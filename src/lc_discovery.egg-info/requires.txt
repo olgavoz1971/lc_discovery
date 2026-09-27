@@ -1,7 +1,0 @@
-numpy
-astropy
-pandas
-requests
-
-[dev]
-pytest

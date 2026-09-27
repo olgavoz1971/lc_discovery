@@ -398,7 +398,7 @@ Discovery orchestration uses these flags to choose Simbad fallbacks (see [§9 in
 ## Getting help
 
 - **Architecture and search flows:** [mission_lightcurve_providers.md](mission_lightcurve_providers.md)
-- **Repository layout:** [structure.md](structure.md)
+- **Public API:** [README.md](../README.md)
 - **Working TAP example:** `lc_discovery/providers/gaia_dr3_veb/`
 - **Non-TAP / Sky Patrol example:** `lc_discovery/providers/asassn/` (cone + `query_list` on `stellar_main`, candidate band rows)
 

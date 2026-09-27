@@ -4,7 +4,11 @@
 
 **Human-readable how-to:** [adding_a_lightcurve_provider.md](adding_a_lightcurve_provider.md) — shorter checklist for plugging in a new provider (including TAP).
 
-**Discovery schema and provider notes:** [README.md](README.md).
+**Discovery schema and provider notes:** [README.md](../README.md).
+
+Related Dash documents (`lightcurve_data_flow.md`, `caching_architecture.md`,
+`structure.md`, Ticket 1 in `TODO.md`) live in the application repository
+(`skvo_veb_2/docs/`), not in this package.
 
 **Status:** Implemented for Discovery (2026-07-30). `lc_discovery/` registry, Gaia DR3 AIP/ARI/VEB, **ASAS-SN** (`lc_discovery/providers/asassn/`), search orchestration (`utils/lc_discovery_search.py`), Submit + Retrieve on `/lc_discovery`. Legacy `/asassn` page remains until retired.
 

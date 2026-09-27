@@ -9,7 +9,7 @@ description = "Light-curve discovery: catalogue search and calibrated VOTable fe
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "LicenseRef-Proprietary" }
-authors = [{ name = "UPJS / SKVO" }]
+authors = [{name = "Olga Vozyakova", email = "olgavoz@gmail.com"}]
 dependencies = [
     "numpy",
     "astropy",
