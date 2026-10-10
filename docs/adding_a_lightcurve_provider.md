@@ -1,31 +1,34 @@
 # Adding a Lightcurve Provider
 
-**Audience:** Developers who want to connect a new archive or survey to **Lightcurve Discovery** (`/lc_discovery`). You do not need to know Dash or the plot UI — only how your archive exposes catalogue rows and lightcurve files.
+**Audience:** Developers who want to connect a new archive or survey to **lc_discovery**. You only need to know how your archive exposes catalogue rows and lightcurve files.
 
-**Technical reference:** [mission_lightcurve_providers.md](mission_lightcurve_providers.md) (full architecture, search flows, caching).
+**Technical reference:** [mission_lightcurve_providers.md](mission_lightcurve_providers.md) (architecture, catalogue, issued product, caching).
 
 ---
 
 ## What you are building
 
-A **provider** is a small adapter between an external archive and the Discovery page.
+A **provider** is a small adapter between an external archive and the public calls of this package.
 
 It does two jobs:
 
 1. **Search** — given a target (coordinates, name, or archive id), return a **catalogue table**: one row per plottable lightcurve (filter, band, sector, etc.).
-2. **Fetch** — given one row’s opaque **`lc_key`**, download or build a **VO-standard lightcurve** (`VOLightCurve`) for plotting and export.
+2. **Fetch** — given one row’s opaque **`lc_key`**, download or build a
+   **calibrated VOTable document** (`bytes`). That document is the issued
+   product (TIMESYS, per-column PhotCal GROUPs, FIELD UCDs). Plugins must
+   **not** import an application package or a VOTable-ingest package.
 
-The Discovery page, plot tools, and export logic stay unchanged. You register the provider once; the UI picks it up from the mission dropdown.
+You register the provider once; `list_missions` then reports it to every caller.
 
 ```text
-User on /lc_discovery
+Caller (application, notebook, script, tests)
         │
         ▼
-  registry.get_provider(mission_id)
+  list_missions / search / fetch   (lc_discovery.api)
         │
-        ├── search_catalog(...)  ──►  standard catalogue table
+        ├── search(...)  ──►  standard catalogue table
         │
-        └── fetch_lightcurve(lc_key)  ──►  VOLightCurve  ──►  plot / export
+        └── fetch(lc_key)  ──►  VOTable bytes  ──►  the caller parses it
 ```
 
 ---
@@ -55,7 +58,7 @@ Gather this information from the archive documentation or a TAP service descript
 Use a **specific** name, not a vague mission umbrella:
 
 ```text
-lc_discovery/my_survey_dr1/
+src/lc_discovery/providers/my_survey_dr1/
 ├── __init__.py      # exports YourProvider class
 └── provider.py      # the adapter class (minimum)
 ```
@@ -64,7 +67,7 @@ Extra files (`config.py`, mappers, fetch helpers) are **your choice** — they k
 
 ### 2. The provider class (`provider.py`)
 
-Subclass `MissionLightcurveProvider` from `lc_discovery/base.py`.
+Subclass `MissionLightcurveProvider` from `lc_discovery.base`.
 
 **Class attributes (required):**
 
@@ -81,7 +84,7 @@ Subclass `MissionLightcurveProvider` from `lc_discovery/base.py`.
 | Method | Purpose |
 |--------|---------|
 | `search_catalog(...)` | Return an Astropy `Table` matching the [shared catalogue schema](mission_lightcurve_providers.md#5-standardised-catalog-table-search-results) |
-| `fetch_lightcurve(lc_key, ...)` | Decode `lc_key`, retrieve data, return `VOLightCurve` |
+| `fetch_lightcurve(lc_key, ...)` | Decode `lc_key`, retrieve data, return **VOTable `bytes`** |
 
 **Methods strongly recommended for Discovery:**
 
@@ -92,6 +95,31 @@ Subclass `MissionLightcurveProvider` from `lc_discovery/base.py`.
 
 Everything else (`validate_lc_key`, `descriptor`, `_require_cone_search`) is inherited from the base class.
 
+### 2.1 Mission description (required text)
+
+Every provider sets a class attribute `description`: a short human-readable
+text that `list_missions()` returns. A person or an agent answers "which sources
+exist?" from it. Write it as plain lines in British English, one line per
+point, in this order:
+
+1. **What it is** (one sentence; first line, no label).
+2. **Where from:** the archive or service (the network is always needed; do not say so).
+3. **Bands:** free text, including which dominates ("V and I, with most points in I").
+4. **Time coverage:** free text; approximate is fine ("started in April 2018; ongoing").
+5. **Sky:** optional; only where it is distinctive (skip for "everything" or "unknown").
+6. **Id lookup:** which identifier the mission accepts as `archive_id` (kind, an
+   example, digits only or not), and which Simbad identifier to take it from
+   (for example "the one that starts with `TIC `"). If Simbad never lists the
+   id, say so and name the fallback ("use a cone search at the Simbad position").
+   Required when `supports_id_lookup` is true.
+7. **Reference:** a bibcode or an archive URL.
+
+Do not repeat search kinds, window support or calibration; those live in the
+capability flags and the provider note. Do not invent facts: write
+`TO CONFIRM` where a fact is not yet checked, and settle it with the
+maintainer. There is no automatic check of the text beyond the attribute
+being present; a provider without `description` fails in `list_missions()`.
+
 ### 3. Catalogue rows and `lc_key`
 
 Each search result row **must** include at least:
@@ -101,8 +129,7 @@ Each search result row **must** include at least:
 Optional standard columns include `t_min`, `t_max`, `n_points`, `period`, and others listed in
 `catalog_schema.py`. Populate time coverage when the archive provides it cheaply at search time.
 Set `MissionCapabilities.supports_discovery_time_filter=False` when discovery cannot honour the
-UI earliest/latest time fields (Gaia DR3 AIP fetches epoch photometry only on row load). The
-Discovery results table hides ``t_min`` / ``t_max`` when this flag is false.
+caller's earliest/latest time arguments (Gaia DR3 AIP fetches epoch photometry only on row load). When this flag is false, ``t_min`` / ``t_max`` are not meaningful as filters.
 
 Set `discovery_catalog_includes_object_class=True` when the discovery query returns a
 classification or object type column (SSA ``dataproduct_type``, Gaia variability class, etc.).
@@ -110,10 +137,17 @@ classification or object type column (SSA ``dataproduct_type``, Gaia variability
 Set `discovery_catalog_includes_n_points=True` when the discovery catalogue includes per-row
 epoch counts (``ssa_length``, ``nobsrel``, detection counts, etc.).
 
+**Extra catalogue columns:** if the user must see facts that are not a
+filter and not in the core optional list, declare extras on the provider
+(`field` + `header`). Default is no extras. Do not add those facts to the
+shared schema, and do not concatenate them into `filter_name`. Do not put
+fetch identity in a display column; `lc_key` stays opaque. Locked rules:
+[schema.md](schema.md).
+
 Use helpers from `lc_discovery/catalog_schema.py`:
 
 - `empty_catalog_table()` — no matches
-- `validate_catalog_table(table)` — before returning
+- `validate_catalog_table(table, extra_columns=...)` — before returning; pass extras when declared
 
 Each `lc_key` is a small JSON string:
 
@@ -125,11 +159,11 @@ Build it with `encode_lc_key(mission_id, payload)`. Only your provider reads `pa
 
 ### 4. Register in `lc_discovery/registry.py`
 
-Registration is the **only** switch that exposes a provider on Lightcurve Discovery.
-There is no separate “enabled” flag or page-level filter.
+Registration is the **only** switch that exposes a provider.
+There is no separate “enabled” flag.
 
 ```python
-from skvo_veb.lc_providers.my_survey_dr1 import MySurveyDr1Provider
+from lc_discovery.providers.my_survey_dr1 import MySurveyDr1Provider
 
 PROVIDERS = {
     ...
@@ -137,39 +171,43 @@ PROVIDERS = {
 }
 ```
 
-After this, the new mission appears in the Discovery dropdown automatically.
+After this, `list_missions` reports the new mission.
 
 ### 4.1 Unregistering a provider
 
-To remove a mission from the Discovery UI (and from `get_provider` / `list_missions`):
+To remove a mission (from `get_provider` / `list_missions`):
 
 1. Delete its import and entry from `PROVIDERS` in `lc_discovery/registry.py`.
 2. Update tests that assert the mission appears in `list_missions()` or call
    `get_provider("<mission_id>")`.
-3. Update docs that list the mission as a live Discovery option.
+3. Update docs that list the mission as available.
 
 **What to do with the provider package:**
 
 | Situation | Action |
 |-----------|--------|
-| Development / test-only provider (e.g. synthetic catalogue, VOLightCurve format experiments) | **Keep** `lc_discovery/<provider>/`. Tests import the class directly (`GaiaDr3Provider()`), not via the registry. |
+| Development / test-only provider (e.g. synthetic catalogue, format experiments) | **Keep** `lc_discovery/<provider>/`. Tests import the class directly (`GaiaDr3Provider()`), not via the registry. |
 | Retired production provider, code still useful as reference | Move to `lc_discovery/obsolete/<provider>/` (must not be imported by production code). |
 | Retired provider, no remaining imports | Delete `lc_discovery/<provider>/`. |
 
 The debug mock `gaia_debug` has been removed.
 
-If a mission is not in `PROVIDERS`, it is unavailable to Discovery and
-`get_provider(mission_id)` raises `PipeException`.
+If a mission is not in `PROVIDERS`, it is unavailable to `list_missions` /
+`search` / `fetch`, and `get_provider(mission_id)` raises `ValueError`.
+Registration in this package does not depend on any application.
 
-### 5. Tests under `skvo_veb/tests/`
+### 5. Tests under `tests/`
 
-Minimum useful tests:
+Minimum useful tests (import `lc_discovery` only; do not import an application
+package):
 
 - Catalogue mapping produces valid columns and `lc_key` round-trip
 - `search_catalog` with mocked remote calls returns expected row count
-- `fetch_lightcurve` with mocked download returns a `VOLightCurve`
+- `fetch_lightcurve` with mocked download returns VOTable **bytes** with the
+  expected FIELDs, UCDs, TIMESYS, and PhotCal GROUPs
 
-Copy patterns from `test_lc_providers_gaia_veb.py` or `test_lc_providers_gaia.py`.
+Copy patterns from `tests/test_lc_providers_gaia_veb.py` or
+`tests/test_lc_providers_ztf.py`.
 
 ---
 
@@ -177,10 +215,7 @@ Copy patterns from `test_lc_providers_gaia_veb.py` or `test_lc_providers_gaia.py
 
 | Area | Why |
 |------|-----|
-| `pages/lightcurve_discovery.py` | Generic UI; talks to providers via registry |
-| `utils/lc_discovery_search.py` | Orchestration only — unless you add a **new** search mode |
-| Plot / trim / fold / export utils | Shared; work on `CurveDash` after fetch |
-| `utils/mission_config/` | Only for **static export profiles** on legacy pages; Discovery export uses metadata from the fetched VOTable |
+| Any application using the package | It talks to this package via the public calls only |
 
 Discuss with maintainers before changing shared orchestration or the base provider contract.
 
@@ -188,7 +223,7 @@ Discuss with maintainers before changing shared orchestration or the base provid
 
 ## Step-by-step checklist (any provider)
 
-1. Create `lc_discovery/<your_provider>/` with `provider.py` and `__init__.py`.
+1. Create `src/lc_discovery/providers/<your_provider>/` with `provider.py` and `__init__.py`.
 2. Set `mission_id`, `display_name`, `capabilities`, `is_mock`.
 3. Implement `search_catalog`:
    - Accept `ra_deg` / `dec_deg` / `radius_arcsec` for cone mode when supported.
@@ -196,25 +231,29 @@ Discuss with maintainers before changing shared orchestration or the base provid
    - Return `validate_catalog_table(...)` or `empty_catalog_table()`.
 4. Implement `fetch_lightcurve`:
    - Validate `lc_key` (use inherited `validate_lc_key`).
-   - Decode payload, call archive, return `VOLightCurve`.
-   - **Enrich metadata in provider-specific code** (see [Lightcurve metadata](#lightcurve-metadata) below).
+   - Decode payload, call archive, return VOTable **bytes**.
+   - **Enrich in provider-specific code** (see [Lightcurve metadata](#lightcurve-metadata) below).
+     Keep every science photometry column the archive supplied; attach PhotCal
+     to each photometry FIELD. Do not collapse the product to one SAP/PDCSAP
+     series here; the caller picks a working column.
 5. Optionally implement `pick_archive_id_from_simbad`.
 6. Register in `registry.py`.
-7. Add tests; run `pytest skvo_veb/tests/test_lc_providers_*.py`.
-8. Manual smoke test on `/lc_discovery`: search → select row → Retrieve.
+7. Add tests; run `pytest tests/test_lc_providers_*.py` from this package.
 
 ---
 
 ## Lightcurve metadata
 
-Discovery export is **mission-blind**: it rebuilds a VOTable from `CurveDash.metadata['vo_envelope']` and `photcal`, not from a legacy `mission_config` profile. Providers are responsible for filling metadata on the fetched `VOLightCurve` before it enters the shared bridge.
+The issued product is the VOTable **bytes** from `fetch`. Providers must put
+TIMESYS, PhotCal GROUPs, table name/description, and FIELD UCDs on that
+document. The caller parses the bytes; that step is outside this package.
 
 ### Obligatory (provider must supply)
 
 | Field | Source (typical) | Stored as |
 |-------|------------------|-----------|
 | **Table description** | VOTable `TABLE/DESCRIPTION` | `vo_envelope.table_description` |
-| **Lightcurve title** | VOTable `TABLE/@name`, corrected by provider if needed | `vo_envelope.lightcurve_title` (also `CurveDash.title` for plot captions) |
+| **Lightcurve title** | VOTable `TABLE/@name`, corrected by provider if needed | `vo_envelope.lightcurve_title` |
 
 Export fails with a clear error if `table_description` is missing after ingest.
 
@@ -229,26 +268,28 @@ Other envelope fields (TIMESYS, COOSYS, creator) are captured automatically by t
 ### Layer separation
 
 ```text
-Provider fetch (e.g. gaia_dr3_veb/fetch_metadata.py)
-  → enrich VOLightCurve.table.meta (title, description, optional bibcode)
-Bridge ingest (utils/lc_bridge.py)
-  → _extract_vo_envelope_meta → metadata['vo_envelope']
-  → volc_to_curvedash sets CurveDash.title from lightcurve_title
-Discovery export (utils/lc_bridge.py)
-  → build_votable_kwargs_from_metadata → write_vo_lightcurve
+Provider fetch_metadata.py
+  → VOTable bytes (TABLE name/description, TIMESYS, PhotCal GROUPs)
+Caller (outside this package)
+  → parses the bytes and chooses a working series
 ```
 
-**Do not** put provider-specific title/description logic in `pages/` or `lc_bridge.py`. Gaia DR3 VEB example: archive `TABLE/@name` omits the passband, so `enrich_fetched_volightcurve` appends `" in {filter_name} filter"` using the catalogue row’s `filter_name`.
+**Do not** put provider-specific title, photcal, or column-picking logic in
+the caller. Gaia DR3 VEB example: archive `TABLE/@name` omits the passband, so
+fetch enrichment appends `" in {filter_name} filter"` using the catalogue row’s
+`filter_name`.
 
-Reference: `lc_discovery/providers/gaia_dr3_veb/fetch_metadata.py`, keys in `utils/lc_config.py` (`VO_ENVELOPE_KEY_*`).
+Reference: `src/lc_discovery/providers/gaia_dr3_veb/fetch_metadata.py`.
 
 ### Folding epoch and TIMESYS
 
-When a VOTable stores `PARAM name="epoch"` without `ref="ts"`, the generic ingest assumes it shares the same `TIMESYS/@timeorigin` as the sole observation-time column (identified by `ucd=time.epoch` via `get_time_colnames`). If several time columns reference **different** timeorigins, ingest fails with a clear error.
+`FIELD/@ref` on a time column must name an actual `TIMESYS/@ID` in the same
+document. Do not emit a bare `ref="ts"` unless that TIMESYS exists.
 
-Internally, CurveDash always stores **absolute Julian Date** for folding. On export, both `obs_time` and `epoch` are rewritten consistently for the standard MJD `TIMESYS` (`timeorigin = 2400000.5`), preserving `JD = obs_time + timeorigin`.
-
-Implementation: sibling package ``volightcurve.time_reference``, wired through `volc_to_curvedash` and `build_votable_kwargs_from_metadata`.
+A reader may treat `PARAM name="epoch"` without
+`ref` as sharing the observation-time TIMESYS when there is a single
+`time.epoch` column. Several time columns with different origins must not be
+invented here.
 
 ---
 
@@ -274,8 +315,8 @@ TAP answers “**what products exist?**”. Fetch often uses a **second step** (
 Use the generic client:
 
 ```python
-from skvo_veb.lc_providers.tap.client import run_tap_sync_query
-from skvo_veb.lc_providers.tap.dialect import TapQueryDialect
+from lc_discovery.tap.client import run_tap_sync_query
+from lc_discovery.tap.dialect import TapQueryDialect
 
 table = run_tap_sync_query(
     tap_url,
@@ -301,7 +342,7 @@ Write queries in **ADQL**, the IVOA astronomical query language — not PostgreS
 | `SELECT … FROM schema.table WHERE …` | PostgreSQL casts (`::`), `ST_*`, `ILIKE` |
 | `1 = CONTAINS(point_column, CIRCLE(ra, dec, radius_deg))` for cone on a **point column** | Reversed `CONTAINS` arguments (circle “inside” a point) |
 | `CIRCLE(ra, dec, radius_deg)` on ADQL 2.1 services | Deprecated `CIRCLE('ICRS', ra, dec, r)` coord-sys argument on 2.1 |
-| Numeric literals for MJD bounds: `t_min > 56889.0` | Assumed server-specific functions unless documented in TAPRegExt |
+| Numeric literals for MJD bounds: `t_max > 56889.0` | Assumed server-specific functions unless documented in TAPRegExt |
 
 **Cone search pattern (ADQL 2.1):** the sky position column is the **first** argument to `CONTAINS`; the search circle is the **second**:
 
@@ -335,8 +376,10 @@ Keep ADQL builders in `config.py` (or `adql.py`) inside **your** provider packag
    - Encode `lc_key` payload with whatever fetch needs (e.g. `accref` URL)
 
 4. **Implement fetch**
-   - TAP row → `lc_key` → your download logic → `VOLightCurve`
-   - If the VOTable already matches the skvo_veb profile, parse directly; otherwise normalise via `write_vo_lightcurve` and `mission_config` helpers
+   - TAP row → `lc_key` → your download logic → VOTable **bytes**
+   - If the archive VOTable already meets the issued-product rules, return it
+     (after documented enrich). Otherwise build the document in the plugin
+     (FIELD UCDs, TIMESYS, PhotCal GROUPs). Do not import an application package.
 
 5. **Wire `provider.py`**
    - `search_catalog` → build ADQL → `run_tap_sync_query` → mapper
@@ -344,7 +387,7 @@ Keep ADQL builders in `config.py` (or `adql.py`) inside **your** provider packag
 
 6. **Test ADQL strings** in unit tests (assert geometry and keywords) and run at least one live query against the TAP service during development.
 
-7. **Register** and smoke-test on Discovery.
+7. **Register** and smoke-test with `search` and `fetch`.
 
 ### Example layout (Gaia DR3 VEB)
 
@@ -354,17 +397,33 @@ gaia_dr3_veb/
 ├── config.py           # TAP URL, ADQL 2.1 templates, dialect
 ├── provider.py         # search_catalog + fetch_lightcurve
 ├── ssa_catalog.py      # TAP SSA rows → catalogue schema
-└── fetch_accref.py     # HTTP GET accref → VOLightCurve
+└── fetch_accref.py     # HTTP GET accref → VOTable bytes
 ```
 
 Shared utilities used but **not** part of this package:
 
-- `lc_discovery/tap/` — generic TAP execution + dialect enum
-- `lc_discovery/shared/gaia_dr3_source_id.py` — DR3 id parsing (DR4 would get its own module)
+- `lc_discovery.tap` — generic TAP execution + dialect enum
+- `lc_discovery.shared.gaia_dr3_source_id` — DR3 id parsing (DR4 would get its own module)
+- `lc_discovery.providers.tess.tic` — TIC parsing (TESS archive plugin)
+
+### Example layout (TESS archive)
+
+```text
+tess/
+├── __init__.py
+├── config.py           # 20.44 for SPOC / TESS-SPOC only
+├── tic.py              # TIC parse / Simbad pick
+├── columns.py          # flux and background registry
+├── catalog.py          # MAST search rows → catalogue
+├── mast_search.py      # Lightkurve search (optional extra)
+├── tess_fetch.py       # unique product download
+├── fetch_metadata.py   # multi-column VOTable
+└── provider.py
+```
 
 ---
 
-## Capability flags (inform the UI)
+## Capability flags (inform the caller)
 
 Set honest flags on `MissionCapabilities`:
 
@@ -372,10 +431,12 @@ Set honest flags on `MissionCapabilities`:
 |------|---------|
 | `supports_cone_search` | Can search by RA, Dec, radius |
 | `supports_id_lookup` | Can search by archive-native id without sky cone |
-| `supports_force_refresh` | Honours `force_refresh=True` on fetch (or accepts it for API compatibility) |
+| `supports_force_refresh` | Honours `force_refresh=True` on fetch: discards the local product and downloads it again |
+| `supports_cache_purge` | Overrides `purge_cached_product` so `purge_cache(lc_key)` deletes the local product of one key |
 | `supports_name_resolve` | Provider resolves generic names itself (rare; usually Simbad handles names) |
+| extra catalogue columns | Empty by default. List of `{field, header}` only; never mission-specific flags |
 
-Discovery orchestration uses these flags to choose Simbad fallbacks (see [§9 in the architecture doc](mission_lightcurve_providers.md#9-search-orchestration-agreed-design)).
+A caller uses these flags to choose a search kind. A mission that keeps a local copy of archive products must set both refresh flags honestly (see [caching](mission_lightcurve_providers.md#9-caching-and-refresh)).
 
 ---
 
@@ -383,21 +444,22 @@ Discovery orchestration uses these flags to choose Simbad fallbacks (see [§9 in
 
 | Mistake | Fix |
 |---------|-----|
-| Putting math, ADQL, or HTTP in `pages/` | Keep all archive logic in `lc_discovery/` |
+| Putting math, ADQL, or HTTP in the calling application | Keep all archive logic in `lc_discovery/` |
 | One folder for unrelated missions (“all Gaia”) | Separate package per product line |
-| Returning `CurveDash` from fetch | Return `VOLightCurve`; bridge happens in `lc_discovery_load` |
+| Returning a table or reader object from fetch | Return VOTable **bytes**; parsing is the caller's step |
+| Collapsing several flux columns to one “default” series | Keep archive photometry columns; attach PhotCal per column |
 | Storing large arrays in `lc_key` | Only small fetch handles (ids, URLs, band codes) |
 | Cone search via “id → Simbad → coords” when direct id works | Use direct lookup first |
 | PostgreSQL in TAP queries | ADQL only; verify against [ADQL 2.0 / 2.1](https://www.ivoa.net/documents/ADQL/) |
-| Forgetting registry entry | Provider code exists but never appears in dropdown |
+| Forgetting registry entry | Provider code exists but `list_missions` never reports it |
 | Leaving a removed provider in `PROVIDERS` | Delete the registry entry when retiring a mission from Discovery |
-| Skipping `validate_catalog_table` | AgGrid and downstream code expect fixed column names |
+| Skipping `validate_catalog_table` | Downstream code expects fixed column names |
 
 ---
 
 ## Getting help
 
-- **Architecture and search flows:** [mission_lightcurve_providers.md](mission_lightcurve_providers.md)
+- **Architecture:** [mission_lightcurve_providers.md](mission_lightcurve_providers.md)
 - **Public API:** [README.md](../README.md)
 - **Working TAP example:** `lc_discovery/providers/gaia_dr3_veb/`
 - **Non-TAP / Sky Patrol example:** `lc_discovery/providers/asassn/` (cone + `query_list` on `stellar_main`, candidate band rows)

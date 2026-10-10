@@ -90,8 +90,8 @@ def fetch(lc_key: str, *, force_refresh: bool = False) -> bytes:
 
     Args:
         lc_key (str): Opaque key from a catalogue row.
-        force_refresh (bool): Accepted by missions. No shared fetch cache
-            is wired in this package yet.
+        force_refresh (bool): Discard the locally cached product and
+            download it again (missions with ``supports_cache_purge``).
 
     Returns:
         bytes: Calibrated VOTable for the reviewed missions.
@@ -110,3 +110,23 @@ def fetch(lc_key: str, *, force_refresh: bool = False) -> bytes:
             f"{mission_id}: fetch did not return VOTable bytes."
         )
     return bytes(payload)
+
+
+def purge_cache(lc_key: str) -> bool:
+    """Deletes the locally cached product of one catalogue light curve.
+
+    The next ``fetch`` of the same ``lc_key`` downloads the product again.
+    Only the product behind this key is touched, never the whole cache.
+
+    Args:
+        lc_key (str): Opaque key from a catalogue row.
+
+    Returns:
+        bool: True when a cached file was deleted, False when none existed.
+
+    Raises:
+        ValueError: When the key or the mission is unknown, or the mission
+            keeps no local product cache (``supports_cache_purge`` is False).
+    """
+    mission_id = decode_lc_key(lc_key)["mission_id"]
+    return get_provider(mission_id).purge_cached_product(lc_key)

@@ -58,7 +58,7 @@ def resolve_personal_target_name(name: str) -> MissionArchiveMatch | None:
     from ``personal.objects.identifiers``.
 
     Args:
-        name (str): Raw Target field text from the UI.
+        name (str): Raw Target field text from the caller.
 
     Returns:
         MissionArchiveMatch or None: Personal archive match when recognised.

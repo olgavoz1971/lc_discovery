@@ -40,6 +40,21 @@ class AsassnProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.EXPORT_PROFILE
+    description = (
+        "ASAS-SN (All-Sky Automated Survey for Supernovae): a network of small robotic "
+        "telescopes monitoring the whole visible sky, mainly for bright transients "
+        "and variable stars.\n"
+        "Where from: the ASAS-SN Sky Patrol service (pyasassn client).\n"
+        "Bands: V and g. "
+        "Time coverage: V band from 2013 to about 2018, g band from 2018 to the present "
+        "(ongoing). Sources observed in both phases have a longer combined baseline.\n"
+        "Sky: all sky, with a cadence of a few days at best; depth reaches roughly "
+        "g ≈ 18 mag, so only relatively bright stars are covered.\n"
+        "Id lookup: Gaia DR3 source_id (digits only); from Simbad take the identifier "
+        "that starts with \"Gaia DR3 \".\n"
+        "Reference: Shappee et al. (2014), ApJ 788, 48; Kochanek et al. (2017), "
+        "PASP 129, 104502."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
@@ -67,7 +82,7 @@ class AsassnProvider(MissionLightcurveProvider):
         return config.MAX_DISCOVERY_SEARCH_RADIUS_DEG
 
     def discovery_cone_limit_entity_label(self) -> str:
-        """Returns UI wording for cone truncation notices.
+        """Returns wording for cone truncation notices.
 
         Returns:
             str: Entity label for the discovery row cap.
@@ -92,7 +107,7 @@ class AsassnProvider(MissionLightcurveProvider):
         """Parses Gaia DR3 ``source_id`` strings before Simbad name resolution.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Gaia archive match when recognised.
@@ -125,7 +140,7 @@ class AsassnProvider(MissionLightcurveProvider):
             ra_deg (float, optional): ICRS right ascension in degrees.
             dec_deg (float, optional): ICRS declination in degrees.
             radius_arcsec (float, optional): Cone radius in arcseconds.
-            object_name (str, optional): Gaia id or target name from the UI.
+            object_name (str, optional): Gaia id or target name from the caller.
             archive_id (str, optional): Gaia ``source_id`` for direct lookup.
             time_start_mjd (float, optional): Ignored; time filtering is unsupported.
             time_end_mjd (float, optional): Ignored; time filtering is unsupported.
@@ -249,7 +264,7 @@ class AsassnProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> int | None:
-        """Casts archive or UI text to a Gaia ``source_id`` when possible.
+        """Casts archive or caller text to a Gaia ``source_id`` when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

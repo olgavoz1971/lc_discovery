@@ -22,7 +22,7 @@ def resolve_upjs_target_name(name: str) -> MissionArchiveMatch | None:
     this helper covers Simbad and VSX names from the local objects table only.
 
     Args:
-        name (str): Raw Target field text from the UI.
+        name (str): Raw Target field text from the caller.
 
     Returns:
         MissionArchiveMatch or None: UPJŠ archive match when recognised.

@@ -39,11 +39,29 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.PROVIDER_ID
+    description = (
+      "Gaia DR3 epoch photometry: time series for the subset of sources that Gaia "
+      "released with epoch data, mostly variable-star candidates.\n"
+      "Where from: the Gaia@AIP TAP service (gaia.aip.de). Epoch photometry is "
+      "fetched on first load of a source and kept on disk for all three bands.\n"
+      "Bands: G, BP and RP.\n"
+      "Time coverage: 25 July 2014 to 28 May 2017 (the DR3 observing period, "
+      "about 34 months). \n" 
+      "Sky: all sky, but only sources flagged as having epoch photometry. "
+      "Sampling is irregular and follows the Gaia scanning law, so the number of "
+      "epochs varies strongly with position on the sky.\n"
+      "Id lookup: Gaia DR3 source_id (digits only); from Simbad take the identifier "
+      "that starts with \"Gaia DR3 \".\n"
+      "Reference: Gaia Collaboration, Vallenari et al. (2023), A&A 674, A1 "
+      "(Gaia DR3 summary); Gaia Collaboration, Prusti et al. (2016), A&A 595, A1 "
+      "(the mission)."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
         supports_id_lookup=True,
         supports_force_refresh=True,
+        supports_cache_purge=True,
         provides_catalog_epoch_period=False,
         supports_discovery_time_filter=False,
         discovery_catalog_includes_object_class=True,
@@ -85,7 +103,7 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
         """Parses Gaia DR3 ``source_id`` strings before Simbad name resolution.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Gaia archive match when recognised.
@@ -122,7 +140,7 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
             ra_deg (float, optional): ICRS right ascension in degrees.
             dec_deg (float, optional): ICRS declination in degrees.
             radius_arcsec (float, optional): Cone radius in arcseconds.
-            object_name (str, optional): Gaia ``source_id`` string from the UI.
+            object_name (str, optional): Gaia ``source_id`` string from the caller.
             archive_id (str, optional): Gaia ``source_id`` for direct lookup.
             time_start_mjd (float, optional): Ignored; time filtering is unsupported.
             time_end_mjd (float, optional): Ignored; time filtering is unsupported.
@@ -172,7 +190,7 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
         )
 
     def discovery_cone_limit_entity_label(self) -> str:
-        """Returns UI wording for the Gaia@AIP cone ``TOP`` limit.
+        """Returns wording for the Gaia@AIP cone ``TOP`` limit.
 
         Returns:
             str: Entity label for truncation notices.
@@ -190,10 +208,11 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
 
         Args:
             lc_key (str): Serialised fetch handle from a catalog row.
-            force_refresh (bool): When true, re-query epoch photometry from TAP.
+            force_refresh (bool): When true, delete the prefetched record and
+                query epoch photometry from TAP again.
 
         Returns:
-            bytes: Enriched VOTable. The Dash application parses it after this return.
+            bytes: Enriched VOTable. The caller parses it after this return.
 
         Raises:
             ValueError: When the key is invalid or fetch fails validation.
@@ -230,6 +249,28 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
         )
         enriched = votable_from_cached_epoch(load_epoch_photometry(source_id), band_code=str(band))
         return enriched
+
+    def purge_cached_product(self, lc_key: str) -> bool:
+        """Deletes the prefetched epoch photometry of the key's source.
+
+        The record holds all bands of one Gaia source, so the other bands of
+        that source are fetched again too.
+
+        Args:
+            lc_key (str): Serialised fetch handle from a catalog row.
+
+        Returns:
+            bool: True when a record was deleted, False when none was cached.
+
+        Raises:
+            ValueError: When the key is invalid or has no ``source_id``.
+        """
+        if not self.validate_lc_key(lc_key):
+            raise ValueError(f"{self.display_name}: invalid lightcurve key.")
+        source_id = decode_lc_key(lc_key)["payload"].get("source_id")
+        if source_id is None:
+            raise ValueError(f"{self.display_name}: lc_key payload missing source_id.")
+        return clear_epoch_photometry(source_id)
 
     def _query_gaia_source_by_id(self, source_id: int) -> Table:
         """Runs the Gaia source lookup ADQL query.
@@ -336,7 +377,7 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> int | None:
-        """Casts archive or UI text to a Gaia ``source_id`` when possible.
+        """Casts archive or caller text to a Gaia ``source_id`` when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

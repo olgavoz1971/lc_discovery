@@ -6,11 +6,13 @@ Catalogue search and calibrated light-curve fetch. Install from this tree:
 pip install -e .
 # with tests
 pip install -e ".[dev]"
+# TESS archive plugin (installs Lightkurve; see below)
+pip install -e ".[tess]"
 ```
 
-Search for and retrieve light curves from the registered archives. The
+Search for and retrieve light curves from the registered archives. The package knows nothing about any application, plot or UI. The
 public calls are `list_missions`, `search`, `resolve_target`,
-`archive_id_from_identifiers`, and `fetch`.
+`archive_id_from_identifiers`, `fetch`, and `purge_cache`.
 
 ## Reading order
 
@@ -18,7 +20,7 @@ public calls are `list_missions`, `search`, `resolve_target`,
 2. [docs/schema.md](docs/schema.md): issued product and enrich rules.
 3. [docs/providers/](docs/providers/): one note per mission. Calibration changes live only here.
 4. [docs/adding_a_lightcurve_provider.md](docs/adding_a_lightcurve_provider.md): checklist for a new plugin.
-5. [docs/mission_lightcurve_providers.md](docs/mission_lightcurve_providers.md): plugin architecture inside this package. 
+5. [docs/mission_lightcurve_providers.md](docs/mission_lightcurve_providers.md): plugin architecture inside this package.
 
 Applications and agents import those names from `lc_discovery`.
 They do not call mission plugins, and they do not decode `lc_key`.
@@ -30,6 +32,7 @@ from lc_discovery import (
     resolve_target,
     archive_id_from_identifiers,
     fetch,
+    purge_cache,
 )
 ```
 
@@ -44,7 +47,8 @@ entry has:
 | --- | --- |
 | `mission_id` | Stable slug passed to `search` (for example `ogle_ocvs`). |
 | `display_name` | Label for a mission selector. |
-| `export_profile` | Name of the export profile for this mission. |
+| `export_profile` | Name of the export profile for this mission (a label for the caller). |
+| `description` | Human-readable text: what the source is, where it comes from, bands, time coverage, reference. |
 | `capabilities` | What that mission accepts. See below. |
 | `is_mock` | `True` only for a synthetic mission. None of the registered missions are mocks. |
 
@@ -53,7 +57,8 @@ entry has:
 - `supports_cone_search`: sky position and radius are accepted.
 - `supports_name_resolve`: an object name is accepted.
 - `supports_id_lookup`: a mission archive id is accepted.
-- `supports_force_refresh`: `fetch(..., force_refresh=True)` is meaningful for that mission.
+- `supports_force_refresh`: `fetch(..., force_refresh=True)` discards the locally cached product and downloads it again.
+- `supports_cache_purge`: `purge_cache(lc_key)` deletes the locally cached product of one key.
 - `provides_catalog_epoch_period`: catalogue rows can carry epoch and period.
 - `supports_discovery_time_filter`: `time_start_mjd` and `time_end_mjd` are accepted. When this is false, a time window is an error.
 - `discovery_catalog_includes_object_class`: rows can carry an object class.
@@ -107,12 +112,24 @@ Retrieves one light curve.
 | Argument | Meaning |
 | --- | --- |
 | `lc_key` | Value from a `search` row. |
-| `force_refresh` | Accepted. No shared fetch cache is wired yet. |
+| `force_refresh` | Discards the locally cached product of this key and downloads it again. Only where `supports_force_refresh` is true and the mission keeps a local product cache. |
 
 Returns `bytes`: the calibrated VOTable document. Enrichment has already
 been applied inside the mission. A bad key, an unknown mission, or a
 plugin that does not return bytes raises `ValueError`.
 
+
+### `purge_cache(lc_key)`
+
+Deletes the locally cached product of one light curve: one object, one
+sector, one author. It never clears the whole cache. The next `fetch` of the
+same key downloads the product again. Returns `True` when a file was
+deleted and `False` when none was cached.
+
+Only missions with `supports_cache_purge` keep a local product cache (today
+`tess`: the MAST FITS file in the Lightkurve cache). For any other mission
+it raises `ValueError`. `fetch(lc_key, force_refresh=True)` is purge and
+download in one call.
 
 ## Why `fetch` does not return an Astropy Table or VOTableFile
 
@@ -155,8 +172,7 @@ votable = parse(io.BytesIO(payload))
 
 Mission classes, `fetch_lightcurve`, `enrich_votable`, ADQL, TAP
 clients, `get_provider`, and `encode_lc_key` / `decode_lc_key` are
-inside the package. The Discovery page, CurveDash, and Aladin stay in
-the application. 
+inside the package.
 
 ## Examples
 
@@ -312,7 +328,7 @@ follows it. A provider note does not replace it.
 checklist for a new plugin.
 
 [docs/mission_lightcurve_providers.md](docs/mission_lightcurve_providers.md)
-describes the plugin layout. 
+describes the plugin layout.
 
 Each file under `docs/providers/` expands the schema for one mission. Empty
 sections stay empty until that provider is reviewed.
@@ -325,4 +341,5 @@ sections stay empty until that provider is reviewed.
 - [Pan-STARRS1 DR2](docs/providers/panstarrs1_dr2.md) (`panstarrs1_dr2`)
 - [Personal collections](docs/providers/personal_ts.md) (`personal_ts`)
 - [UPJŠ time series](docs/providers/upjs_ts.md) (`upjs_ts`)
-- [ZTF](docs/providers/ztf.md) (`ztf`)
+- [ZTF](docs/providers/ztf.md) (`ztf_dr24`)
+- [TESS archive](docs/providers/tess.md) (`tess`)

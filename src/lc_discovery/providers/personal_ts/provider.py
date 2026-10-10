@@ -33,6 +33,14 @@ class PersonalTsProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.PROVIDER_ID
+    description = (
+        "Personal time-series collections kept in the UPJS archive.\n"
+        "Where from: UPJS TAP service (skvo.science.upjs.sk).\n"
+        "Bands: depends on the collection.\n"
+        "Time coverage: depends on the collection.\n"
+        "Id lookup: personal object id (TO CONFIRM: spelling and Simbad cross-match).\n"
+        "Reference: depends on the collection."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
@@ -77,7 +85,7 @@ class PersonalTsProvider(MissionLightcurveProvider):
         """Resolves messy target text or cross-id aliases to ``object_id``.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Personal archive match when recognised.
@@ -178,7 +186,7 @@ class PersonalTsProvider(MissionLightcurveProvider):
             force_refresh (bool): Accepted for API compatibility; no cache yet.
 
         Returns:
-            bytes: Enriched VOTable. The Dash application parses it after this return.
+            bytes: Enriched VOTable. The caller parses it after this return.
 
         Raises:
             ValueError: When the key is invalid or download fails.
@@ -206,7 +214,7 @@ class PersonalTsProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> str | None:
-        """Normalises archive or UI text to a personal ``object_id`` when possible.
+        """Normalises archive or caller text to a personal ``object_id`` when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

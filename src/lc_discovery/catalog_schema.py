@@ -6,7 +6,8 @@ One catalog row represents one plottable lightcurve (not one astrophysical sourc
 from __future__ import annotations
 
 import logging
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Sequence
 
 import numpy as np
 from astropy.table import Table, vstack
@@ -15,6 +16,23 @@ logger = logging.getLogger(__name__)
 
 DISCOVERY_META_MAY_BE_TRUNCATED = "discovery_may_be_truncated"
 DISCOVERY_META_TRUNCATION_DETAIL = "discovery_truncation_detail"
+CATALOG_META_EXTRA_FIELDS = "catalog_extra_fields"
+
+
+@dataclass(frozen=True)
+class CatalogExtraColumn:
+    """One provider-declared catalogue display column.
+
+    Attributes:
+        field (str): Table field id. Must not clash with core names.
+        header (str): Column title shown in the results table.
+        width (int, optional): Preferred column width in pixels. When omitted
+            the host applies its narrow default for provider extras.
+    """
+
+    field: str
+    header: str
+    width: int | None = None
 
 REQUIRED_CATALOG_COLUMNS = (
     "distance_arcsec",
@@ -58,31 +76,73 @@ CATALOG_COLUMN_DTYPES = {
 }
 
 
-def empty_catalog_table() -> Table:
-    """Creates an empty catalog table with all standard columns present.
+def extra_column_fields(
+    extra_columns: Sequence[CatalogExtraColumn] | Sequence[str] | None,
+) -> tuple[str, ...]:
+    """Returns field ids from an extra-column declaration.
+
+    Args:
+        extra_columns: ``CatalogExtraColumn`` items, field-id strings, or None.
 
     Returns:
-        astropy.table.Table: Empty table with required and optional columns.
+        tuple[str, ...]: Field ids in declaration order.
     """
+    if not extra_columns:
+        return ()
+    fields: list[str] = []
+    for item in extra_columns:
+        if isinstance(item, CatalogExtraColumn):
+            fields.append(item.field)
+        else:
+            fields.append(str(item))
+    return tuple(fields)
+
+
+def empty_catalog_table(
+    extra_columns: Sequence[CatalogExtraColumn] | Sequence[str] | None = None,
+) -> Table:
+    """Creates an empty catalog table with all standard columns present.
+
+    Args:
+        extra_columns: Optional extra display columns declared by a provider.
+
+    Returns:
+        astropy.table.Table: Empty table with required, optional, and extra columns.
+    """
+    extra_fields = extra_column_fields(extra_columns)
+    _reject_core_name_clash(extra_fields)
     columns = {}
     for name in REQUIRED_CATALOG_COLUMNS + OPTIONAL_CATALOG_COLUMNS:
         dtype = CATALOG_COLUMN_DTYPES[name]
         columns[name] = np.array([], dtype=dtype)
-    return Table(columns)
+    for name in extra_fields:
+        columns[name] = np.array([], dtype=object)
+    table = Table(columns)
+    table.meta[CATALOG_META_EXTRA_FIELDS] = extra_fields
+    return table
 
 
-def validate_catalog_table(table: Table) -> Table:
+def validate_catalog_table(
+    table: Table,
+    extra_columns: Sequence[CatalogExtraColumn] | Sequence[str] | None = None,
+) -> Table:
     """Validates and normalises a mission catalog table.
+
+    Extra columns are allowed only when declared (argument or table meta).
+    Their names must not duplicate a core required or optional column.
 
     Args:
         table (astropy.table.Table): Candidate catalog from a provider search.
+        extra_columns: Provider extra-column declaration. When omitted, field
+            ids are read from ``table.meta['catalog_extra_fields']``.
 
     Returns:
-        astropy.table.Table: Copy with required columns and allowed optional columns.
+        astropy.table.Table: Copy with required, optional, and declared extra columns.
 
     Raises:
         TypeError: If ``table`` is not an Astropy ``Table``.
-        ValueError: If required columns are missing or unknown columns are present.
+        ValueError: If required columns are missing, extras clash with core
+            names, or undeclared columns are present.
     """
     if not isinstance(table, Table):
         raise TypeError(f"Catalog table must be astropy.table.Table, got {type(table)!r}")
@@ -91,7 +151,13 @@ def validate_catalog_table(table: Table) -> Table:
     if missing:
         raise ValueError(f"Catalog table missing required columns: {missing}")
 
-    allowed = set(REQUIRED_CATALOG_COLUMNS) | set(OPTIONAL_CATALOG_COLUMNS)
+    if extra_columns is not None:
+        extra_fields = extra_column_fields(extra_columns)
+    else:
+        extra_fields = extra_column_fields(table.meta.get(CATALOG_META_EXTRA_FIELDS))
+    _reject_core_name_clash(extra_fields)
+
+    allowed = set(REQUIRED_CATALOG_COLUMNS) | set(OPTIONAL_CATALOG_COLUMNS) | set(extra_fields)
     unknown = [name for name in table.colnames if name not in allowed]
     if unknown:
         raise ValueError(f"Catalog table has unknown columns: {unknown}")
@@ -100,11 +166,32 @@ def validate_catalog_table(table: Table) -> Table:
     for name in OPTIONAL_CATALOG_COLUMNS:
         if name not in normalised.colnames:
             normalised[name] = np.ma.masked_all(len(normalised), dtype=CATALOG_COLUMN_DTYPES[name])
+    for name in extra_fields:
+        if name not in normalised.colnames:
+            normalised[name] = np.array([""] * len(normalised), dtype=object)
 
-    ordered = REQUIRED_CATALOG_COLUMNS + OPTIONAL_CATALOG_COLUMNS
+    ordered = REQUIRED_CATALOG_COLUMNS + OPTIONAL_CATALOG_COLUMNS + extra_fields
     result = normalised[ordered]
     result.meta.update(table.meta)
+    result.meta[CATALOG_META_EXTRA_FIELDS] = extra_fields
     return result
+
+
+def _reject_core_name_clash(extra_fields: Sequence[str]) -> None:
+    """Raises when an extra field id collides with a core catalogue name.
+
+    Args:
+        extra_fields (Sequence[str]): Declared extra field ids.
+
+    Raises:
+        ValueError: When a core name is reused.
+    """
+    core = set(REQUIRED_CATALOG_COLUMNS) | set(OPTIONAL_CATALOG_COLUMNS)
+    clash = [name for name in extra_fields if name in core]
+    if clash:
+        raise ValueError(
+            f"Extra catalogue columns must not reuse core names: {clash}."
+        )
 
 
 def sort_catalog_by_distance(table: Table) -> Table:
@@ -150,7 +237,7 @@ def read_discovery_truncation_meta(table: Table) -> tuple[bool, str | None]:
 
 
 def catalog_table_to_row_dicts(table: Table) -> list[dict[str, Any]]:
-    """Serialises a catalog table to plain dict rows for AgGrid or JSON stores.
+    """Serialises a catalog table to plain dict rows for JSON stores.
 
     Args:
         table (astropy.table.Table): Validated catalog table.
@@ -173,29 +260,29 @@ def catalog_table_to_row_dicts(table: Table) -> list[dict[str, Any]]:
     return rows
 
 
-def catalog_row_to_aggrid_dict(row, *, row_index: int) -> dict[str, Any]:
-    """Converts one catalog row to an AgGrid row dict with a display index.
+def catalog_row_to_indexed_dict(row, *, row_index: int) -> dict[str, Any]:
+    """Converts one catalog row to a dict with a one-based display index.
 
     Args:
         row: Astropy table row or dict-like catalog record.
         row_index (int): Zero-based row index shown in the ``#`` column.
 
     Returns:
-        dict: AgGrid-compatible row payload.
+        dict: Row payload with the index.
     """
     if hasattr(row, "colnames"):
         payload = {name: row[name] for name in row.colnames}
     else:
         payload = dict(row)
 
-    aggrid_row: dict[str, Any] = {"#": row_index + 1}
+    indexed_row: dict[str, Any] = {"#": row_index + 1}
     for key, value in payload.items():
         if isinstance(value, np.generic):
             value = value.item()
         if isinstance(value, bytes):
             value = value.decode("utf-8")
-        aggrid_row[key] = None if value is np.ma.masked else value
-    return aggrid_row
+        indexed_row[key] = None if value is np.ma.masked else value
+    return indexed_row
 
 
 def append_catalog_rows(base: Table, extra: Table) -> Table:

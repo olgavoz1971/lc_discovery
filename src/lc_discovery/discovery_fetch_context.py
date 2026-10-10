@@ -1,4 +1,4 @@
-"""Discovery session context passed from the UI into lightcurve fetch."""
+"""Search context passed from the caller into lightcurve fetch."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ LOOKUP_ASSOCIATION_MAX_ARCSEC = 5.0
 
 
 def _radius_to_arcsec(radius_value: float, radius_unit: str) -> float:
-    """Converts a UI radius to arcseconds without importing the orchestrator module.
+    """Converts a caller radius to arcseconds without importing the orchestrator module.
 
     Args:
         radius_value (float): Numeric radius from the tools panel.
@@ -35,7 +35,7 @@ class DiscoveryFetchContext:
 
     Attributes:
         search_mode (str, optional): Orchestrator search strategy identifier.
-        user_target (str, optional): Raw Target field text from the UI.
+        user_target (str, optional): Raw Target field text from the caller.
         simbad_main_id (str, optional): Simbad main identifier when resolved.
         radius_arcsec (float, optional): Cone radius used for the search in arcseconds.
         distance_arcsec (float, optional): Separation of the selected catalogue row
@@ -55,7 +55,7 @@ def discovery_fetch_context_from_store(
     store: dict | None,
     catalog_row: dict | None,
 ) -> DiscoveryFetchContext | None:
-    """Builds a fetch context from Discovery ``dcc.Store`` payload and one AgGrid row.
+    """Builds a fetch context from a serialised search outcome and one catalogue row.
 
     Args:
         store (dict, optional): Serialised ``SearchOutcome`` metadata.

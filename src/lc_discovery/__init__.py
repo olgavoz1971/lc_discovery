@@ -1,14 +1,14 @@
 """Multi-mission lightcurve search and fetch adapters.
 
 Applications import ``list_missions``, ``search``, ``resolve_target``,
-``archive_id_from_identifiers``, and ``fetch``. Mission plugins are not
-part of this surface. The Dash application parses ``fetch`` bytes into
-``VOLightCurve`` only at the UI boundary.
+``archive_id_from_identifiers``, ``fetch`` and ``purge_cache``. Mission plugins are not
+part of this surface.
 """
 
 from lc_discovery.api import (
     archive_id_from_identifiers,
     fetch,
+    purge_cache,
     resolve_target,
     search,
 )
@@ -20,6 +20,7 @@ __all__ = [
     "archive_id_from_identifiers",
     "fetch",
     "list_missions",
+    "purge_cache",
     "resolve_target",
     "search",
 ]

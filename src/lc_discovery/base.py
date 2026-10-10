@@ -10,6 +10,7 @@ from astropy.coordinates import SkyCoord
 from astropy.table import Table
 
 from lc_discovery.catalog_schema import (
+    CatalogExtraColumn,
     DISCOVERY_META_MAY_BE_TRUNCATED,
     DISCOVERY_META_TRUNCATION_DETAIL,
     sort_catalog_by_distance,
@@ -31,21 +32,24 @@ class MissionCapabilities:
     supports_name_resolve: bool = False
     supports_id_lookup: bool = False
     supports_force_refresh: bool = False
+    supports_cache_purge: bool = False
     provides_catalog_epoch_period: bool = False
     supports_discovery_time_filter: bool = True
     discovery_catalog_includes_object_class: bool = False
     discovery_catalog_includes_n_points: bool = False
+    catalog_extra_columns: tuple[CatalogExtraColumn, ...] = ()
 
 
 @dataclass(frozen=True)
 class MissionDescriptor:
-    """Lightweight mission metadata for UI registries."""
+    """Lightweight mission metadata."""
 
     mission_id: str
     display_name: str
     export_profile: str
     capabilities: MissionCapabilities
     is_mock: bool = False
+    description: str = ""
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,7 @@ class MissionLightcurveProvider(ABC):
     display_name: str
     export_profile: str
     capabilities: MissionCapabilities
+    description: str  # human-readable checklist text, see docs/adding_a_lightcurve_provider.md
     is_mock: bool = False
 
     @abstractmethod
@@ -109,13 +114,31 @@ class MissionLightcurveProvider(ABC):
 
         Args:
             lc_key (str): Opaque fetch handle from a catalog row.
-            force_refresh (bool): When True, bypass provider-local caches.
+            force_refresh (bool): When True, discard the locally cached product
+                (where the mission keeps one) and download it again.
             discovery_context (DiscoveryFetchContext, optional): Discovery session
                 metadata. Not part of the public package surface.
 
         Returns:
             bytes: Calibrated VOTable.
         """
+
+    def purge_cached_product(self, lc_key: str) -> bool:
+        """Deletes the locally cached product of one light curve.
+
+        Only missions with ``capabilities.supports_cache_purge`` keep a local
+        product cache; the next ``fetch`` then downloads the product again.
+
+        Args:
+            lc_key (str): Opaque fetch handle from a catalogue row.
+
+        Returns:
+            bool: True when a cached file was deleted, False when none existed.
+
+        Raises:
+            ValueError: When this mission keeps no local product cache.
+        """
+        raise ValueError(f"{self.display_name}: keeps no local product cache to purge.")
 
     def resolve_name(self, name: str) -> SkyCoord | None:
         """Resolves an object name to ICRS coordinates when supported.
@@ -137,7 +160,7 @@ class MissionLightcurveProvider(ABC):
         no rows and before falling back to Simbad.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Mission-native archive match when
@@ -184,7 +207,7 @@ class MissionLightcurveProvider(ABC):
         """Returns the mission default cone radius in arcseconds.
 
         Returns:
-            float: Suggested search radius for the UI.
+            float: Suggested search radius.
         """
         return 10.0
 
@@ -193,7 +216,7 @@ class MissionLightcurveProvider(ABC):
 
         Missions may apply this limit to different entities (SSA rows, Gaia
         ``source_id`` rows, or catalogue rows). Use
-        ``discovery_cone_limit_entity_label()`` for UI wording.
+        ``discovery_cone_limit_entity_label()`` for wording.
 
         Returns:
             int: Row cap for cone searches (default 100).
@@ -290,7 +313,7 @@ class MissionLightcurveProvider(ABC):
         return DEFAULT_MAX_DISCOVERY_SEARCH_RADIUS_DEG
 
     def descriptor(self) -> MissionDescriptor:
-        """Builds registry metadata for UI mission selectors.
+        """Builds registry metadata for this mission.
 
         Returns:
             MissionDescriptor: Mission identity and capability summary.
@@ -301,6 +324,7 @@ class MissionLightcurveProvider(ABC):
             export_profile=self.export_profile,
             capabilities=self.capabilities,
             is_mock=self.is_mock,
+            description=self.description,
         )
 
     def _require_cone_search(

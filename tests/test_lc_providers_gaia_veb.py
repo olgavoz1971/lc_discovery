@@ -78,8 +78,8 @@ def test_veb_adql_source_id_query():
     )
     assert "FROM gaiadr3_eb.ts_ssa" in adql
     assert f"source_id = {AA_AND.source_id}" in adql
-    assert "t_min > 56889.0" in adql
-    assert "t_max < 60000.0" in adql
+    assert "t_max > 56889.0" in adql
+    assert "t_min < 60000.0" in adql
     assert "accref" in adql
     assert adql.startswith("SELECT ")
 

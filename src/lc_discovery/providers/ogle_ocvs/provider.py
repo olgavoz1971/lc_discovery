@@ -33,6 +33,26 @@ class OgleOcvsProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.PROVIDER_ID
+    description = (
+      "OGLE Collection of Variable Stars (OCVS): a catalogue of variable stars "
+      "discovered and classified by the Optical Gravitational Lensing Experiment, "
+      "a long-running photometric survey using the 1.3 m Warsaw Telescope at "
+      "Las Campanas Observatory, Chile.\n"
+      "Where from: the UPJS TAP service (skvo.science.upjs.sk), which republishes "
+      "the OCVS in our own archive.\n"
+      "Bands: I and V. The I band carries the bulk of the epochs; V is sparser "
+      "and mainly serves for colours.\n"
+      "Time coverage: from 1992 to the present. The survey has run in phases "
+      "(OGLE-I to OGLE-IV), and observations are ongoing with OGLE-IV (since 2010).\n"
+      "Sky: the southern sky, mostly the Galactic bulge, parts of the Galactic "
+      "disc, and the Large and Small Magellanic Clouds together with the "
+      "Magellanic Bridge. Crowded, dense fields dominate; there is no all-sky coverage.\n"
+      "Id lookup: OGLE object id (for example \"OGLE-LMC-RRLYR-13820\"); from Simbad "
+      "take an identifier that contains \"OGLE\"; the plugin normalises its spelling.\n"
+      "Reference: Udalski, Szymański & Szymański (2015), Acta Astronomica 65, 1 "
+      "(OGLE-IV survey); individual OCVS catalogues are described in the "
+      "papers by Soszyński et al. (variable-type specific)."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
@@ -77,7 +97,7 @@ class OgleOcvsProvider(MissionLightcurveProvider):
         """Normalises loose OGLE spellings to ``object_id`` before Simbad.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: OGLE archive match when recognised.
@@ -178,7 +198,7 @@ class OgleOcvsProvider(MissionLightcurveProvider):
             force_refresh (bool): Accepted for API compatibility; no cache yet.
 
         Returns:
-            bytes: Enriched VOTable. The Dash application parses it after this return.
+            bytes: Enriched VOTable. The caller parses it after this return.
 
         Raises:
             ValueError: When the key is invalid or download fails.
@@ -206,7 +226,7 @@ class OgleOcvsProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> str | None:
-        """Normalises archive or UI text to an OGLE ``object_id`` when possible.
+        """Normalises archive or caller text to an OGLE ``object_id`` when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

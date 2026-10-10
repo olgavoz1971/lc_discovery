@@ -1,12 +1,12 @@
 """Tests for the standardised multi-mission catalog table schema."""
 
 import numpy as np
-import numpy as np
 import pytest
 from astropy.table import Table
 
 from lc_discovery.catalog_schema import (
-    catalog_row_to_aggrid_dict,
+    CatalogExtraColumn,
+    catalog_row_to_indexed_dict,
     catalog_table_to_row_dicts,
     empty_catalog_table,
     validate_catalog_table,
@@ -78,9 +78,29 @@ def test_catalog_table_to_row_dicts_round_trip():
     assert rows[0]["n_points"] == 24
 
 
-def test_catalog_row_to_aggrid_dict_adds_index():
+def test_validate_catalog_table_accepts_declared_extra_columns():
+    """Declared extra fields are kept; undeclared names are still rejected."""
+    extras = (CatalogExtraColumn(field="sector_exp", header="Sector/exp"),)
+    row = _sample_catalog_row()
+    row["sector_exp"] = "16 120s"
+    table = validate_catalog_table(Table([row]), extra_columns=extras)
+    assert table["sector_exp"][0] == "16 120s"
+    row_bad = _sample_catalog_row()
+    row_bad["invented"] = "no"
+    with pytest.raises(ValueError, match="unknown columns"):
+        validate_catalog_table(Table([row_bad]))
+
+
+def test_validate_catalog_table_rejects_extra_core_name_clash():
+    """Extra field ids must not reuse a core catalogue name."""
+    extras = (CatalogExtraColumn(field="filter_name", header="Nope"),)
+    with pytest.raises(ValueError, match="must not reuse core names"):
+        validate_catalog_table(Table([_sample_catalog_row()]), extra_columns=extras)
+
+
+def test_catalog_row_to_indexed_dict_adds_index():
     """AgGrid helper adds the display index column."""
     table = validate_catalog_table(Table([_sample_catalog_row()]))
-    aggrid_row = catalog_row_to_aggrid_dict(table[0], row_index=0)
-    assert aggrid_row["#"] == 1
-    assert aggrid_row["filter_name"] == "Gaia G"
+    indexed_row = catalog_row_to_indexed_dict(table[0], row_index=0)
+    assert indexed_row["#"] == 1
+    assert indexed_row["filter_name"] == "Gaia G"

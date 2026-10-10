@@ -34,6 +34,18 @@ class UpjsTsProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.PROVIDER_ID
+    description = (
+      "Time series from targeted observations at Kolonica Observatory "
+      "(eastern Slovakia), held in the UPJS archive.\n"
+      "Where from: the UPJS TAP service (skvo.science.upjs.sk).\n"
+      "Bands: B, V, R, I (Johnson-Cousins) and g, r, i, z (Sloan-type).\n"
+      "Time coverage: September 2019 to November 2021. \n"
+      "Sky: individual fields chosen by the observers; "
+      "coverage is patchy and varies from star to star.\n"
+      "Id lookup: Gaia DR3 source_id (digits only) or a UPJS object id; from Simbad "
+      "take the identifier that starts with \"Gaia DR3 \".\n"
+      "Reference: in preparation."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
@@ -85,7 +97,7 @@ class UpjsTsProvider(MissionLightcurveProvider):
         """Resolves Simbad or VSX names via ``upjs_ts.objects`` before Simbad.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: UPJŠ archive match when recognised.
@@ -114,7 +126,7 @@ class UpjsTsProvider(MissionLightcurveProvider):
             ra_deg (float, optional): ICRS right ascension in degrees.
             dec_deg (float, optional): ICRS declination in degrees.
             radius_arcsec (float, optional): Cone radius in arcseconds.
-            object_name (str, optional): Gaia DR3 label or target text from the UI.
+            object_name (str, optional): Gaia DR3 label or target text from the caller.
             archive_id (str, optional): Gaia ``source_id`` or UPJŠ ``object_id``.
             time_start_mjd (float, optional): Lower time limit in MJD.
             time_end_mjd (float, optional): Upper time limit in MJD.
@@ -188,7 +200,7 @@ class UpjsTsProvider(MissionLightcurveProvider):
             force_refresh (bool): Accepted for API compatibility; no cache yet.
 
         Returns:
-            bytes: Enriched VOTable. The Dash application parses it after this return.
+            bytes: Enriched VOTable. The caller parses it after this return.
 
         Raises:
             ValueError: When the key is invalid or download fails.
@@ -280,11 +292,11 @@ class UpjsTsProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> str | None:
-        """Casts archive or UI text to an SSA ``ssa_targname`` Gaia label when possible.
+        """Casts archive or caller text to an SSA ``ssa_targname`` Gaia label when possible.
 
         Args:
             archive_id (str, optional): Gaia ``source_id`` from Simbad cross-match.
-            object_name (str, optional): Gaia label or UI target text.
+            object_name (str, optional): Gaia label or caller target text.
 
         Returns:
             str or None: Canonical ``Gaia DR3 …`` SSA target label.

@@ -59,7 +59,8 @@ def _time_bound_clauses(
 ) -> list[str]:
     """Builds optional ADQL time-window predicates in MJD.
 
-    Matches the VEB service convention ``t_min > start`` and ``t_max < end``.
+    Selects products whose time span overlaps the window: ``t_max > start``
+    and ``t_min < end``.
 
     Args:
         time_start_mjd (float, optional): Lower bound in MJD.
@@ -70,9 +71,9 @@ def _time_bound_clauses(
     """
     clauses: list[str] = []
     if time_start_mjd is not None:
-        clauses.append(f"t_min > {float(time_start_mjd)}")
+        clauses.append(f"t_max > {float(time_start_mjd)}")
     if time_end_mjd is not None:
-        clauses.append(f"t_max < {float(time_end_mjd)}")
+        clauses.append(f"t_min < {float(time_end_mjd)}")
     return clauses
 
 

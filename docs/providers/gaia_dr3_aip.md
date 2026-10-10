@@ -66,3 +66,7 @@ The magnitude column receives a photcal. The magnitude zero point is `0.0` mag. 
 | `GAIA/GAIA3.Grp` | `2554.95` Jy | `7.62e-7` m |
 
 The magnitude system is Vega. There is no flux column in this product, so no flux photcal is added.
+
+## Cache and refresh
+
+Epoch photometry is prefetched on the first `fetch` of a source and stored as one JSON file per Gaia `source_id` (all bands together). `fetch(lc_key, force_refresh=True)` deletes that file and queries TAP again. `purge_cache(lc_key)` deletes the file only; the other bands of the same source are fetched again on their next `fetch`.

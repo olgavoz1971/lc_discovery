@@ -32,6 +32,23 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.EXPORT_PROFILE
+    description = (
+       "Pan-STARRS1 DR2: the second data release of the Pan-STARRS1 3π Survey, "
+       "a wide-field optical survey with the 1.8 m PS1 telescope on Haleakalā, Hawaii. "
+       "Light curves are built from the individual detections in the mean-object catalogue.\n"
+       "Where from: the MAST VO TAP service (PS1 DR2). The cone radius is limited "
+       "to 0.24 degrees.\n"
+       "Bands: g, r, i, z and y; only filters with detections are offered for an object.\n"
+       "Time coverage: 2010 to 2014 (the PS1 3π survey years, about 12 epochs "
+       "per band). The survey has ended, so there is no ongoing monitoring.\n"
+       "Sky: everything north of about -30 degrees declination, roughly "
+       "three quarters of the sky. Cadence is sparse and irregular, so the data "
+       "suit long-baseline or archival work better than period searches.\n"
+       "Id lookup: Pan-STARRS1 objID (digits only). Simbad does not list it, so "
+       "for a named star use a cone search at the Simbad position.\n"
+       "Reference: Chambers et al. (2016), arXiv:1612.05560; Flewelling et al. (2020), "
+       "ApJS 251, 7 (data release)."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=False,
@@ -59,7 +76,7 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
         return config.MAX_DISCOVERY_SEARCH_RADIUS_DEG
 
     def discovery_cone_limit_entity_label(self) -> str:
-        """Returns UI wording for cone truncation notices.
+        """Returns wording for cone truncation notices.
 
         Returns:
             str: Entity label for the discovery row cap.
@@ -70,7 +87,7 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
         """Parses numeric ``objID`` strings from the Target field.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Mission-native match when recognised.
@@ -98,7 +115,7 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
             ra_deg (float, optional): ICRS right ascension in degrees.
             dec_deg (float, optional): ICRS declination in degrees.
             radius_arcsec (float, optional): Cone radius in arcseconds.
-            object_name (str, optional): Numeric ``objID`` text from the UI.
+            object_name (str, optional): Numeric ``objID`` text from the caller.
             archive_id (str, optional): Numeric ``objID`` for direct lookup.
             time_start_mjd (float, optional): Ignored at discovery.
             time_end_mjd (float, optional): Ignored at discovery.

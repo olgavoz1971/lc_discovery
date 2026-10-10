@@ -90,13 +90,18 @@ def load_epoch_photometry(source_id: int | str) -> dict[str, Any]:
     return document
 
 
-def clear_epoch_photometry(source_id: int | str) -> None:
+def clear_epoch_photometry(source_id: int | str) -> bool:
     """Removes one prefetched epoch-photometry record, if present.
 
     Args:
         source_id (int or str): Gaia DR3 source identifier.
+
+    Returns:
+        bool: True when a record was deleted, False when none existed.
     """
     path = _cache_path(source_id)
     with _STORE_LOCK:
         if path.is_file():
             path.unlink()
+            return True
+    return False

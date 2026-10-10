@@ -33,6 +33,22 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.PROVIDER_ID
+    description = (
+        "Gaia DR3 epoch photometry: from the UPJS archive (eclipsing-binary selection).\n"
+        "Where from: UPJS TAP service (skvo.science.upjs.sk).\n"
+        "Bands: G, BP and RP.\n"
+        "Time coverage: 25 July 2014 to 28 May 2017 (the DR3 observing period, "
+        "about 34 months). Time windows are applied in the search on the "
+        "t_min and t_max of each product.\n"
+        "Sky: all sky, but only sources flagged as having epoch photometry. "
+        "Sampling is irregular and follows the Gaia scanning law, so the number of "
+        "epochs varies strongly with position on the sky.\n"
+        "Id lookup: Gaia DR3 source_id (digits only); from Simbad take the identifier "
+        "that starts with \"Gaia DR3 \".\n"
+        "Reference: Gaia Collaboration, Vallenari et al. (2023), A&A 674, A1 "
+        "(Gaia DR3 summary); Gaia Collaboration, Prusti et al. (2016), A&A 595, A1 "
+        "(the mission)."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,
@@ -77,7 +93,7 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
         """Parses Gaia DR3 ``source_id`` strings before Simbad name resolution.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: Gaia archive match when recognised.
@@ -110,7 +126,7 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
             ra_deg (float, optional): ICRS right ascension in degrees.
             dec_deg (float, optional): ICRS declination in degrees.
             radius_arcsec (float, optional): Cone radius in arcseconds.
-            object_name (str, optional): Gaia ``source_id`` string from the UI.
+            object_name (str, optional): Gaia ``source_id`` string from the caller.
             archive_id (str, optional): Gaia ``source_id`` for direct lookup.
             time_start_mjd (float, optional): Lower time limit in MJD.
             time_end_mjd (float, optional): Upper time limit in MJD.
@@ -186,7 +202,7 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
             force_refresh (bool): Accepted for API compatibility; no cache yet.
 
         Returns:
-            bytes: Enriched VOTable. The Dash application parses it after this return.
+            bytes: Enriched VOTable. The caller parses it after this return.
 
         Raises:
             ValueError: When the key is invalid or download fails.
@@ -214,7 +230,7 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> int | None:
-        """Casts archive or UI text to a Gaia ``source_id`` when possible.
+        """Casts archive or caller text to a Gaia ``source_id`` when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

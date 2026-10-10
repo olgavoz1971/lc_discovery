@@ -10,7 +10,7 @@ def resolve_ogle_target_name(name: str) -> MissionArchiveMatch | None:
     """Normalises loose OGLE spellings to ``object_id`` before Simbad.
 
     Args:
-        name (str): Raw Target field text from the UI.
+        name (str): Raw Target field text from the caller.
 
     Returns:
         MissionArchiveMatch or None: OGLE archive match when recognised.

@@ -12,6 +12,7 @@ from lc_discovery.providers.gaia_dr3_veb import GaiaDr3VebProvider
 from lc_discovery.providers.ogle_ocvs import OgleOcvsProvider
 from lc_discovery.providers.panstarrs1_dr2 import Panstarrs1Dr2Provider
 from lc_discovery.providers.personal_ts import PersonalTsProvider
+from lc_discovery.providers.tess import TessProvider
 from lc_discovery.providers.upjs_ts import UpjsTsProvider
 from lc_discovery.providers.ztf import ZtfDr24Provider
 
@@ -24,6 +25,7 @@ PROVIDERS: dict[str, MissionLightcurveProvider] = {
     GaiaDr3VebProvider.mission_id: GaiaDr3VebProvider(),
     OgleOcvsProvider.mission_id: OgleOcvsProvider(),
     PersonalTsProvider.mission_id: PersonalTsProvider(),
+    TessProvider.mission_id: TessProvider(),
     UpjsTsProvider.mission_id: UpjsTsProvider(),
     ZtfDr24Provider.mission_id: ZtfDr24Provider(),
     Panstarrs1Dr2Provider.mission_id: Panstarrs1Dr2Provider(),
@@ -34,7 +36,7 @@ def get_provider(mission_id: str) -> MissionLightcurveProvider:
     """Returns a registered mission provider instance.
 
     Args:
-        mission_id (str): Mission slug from the UI or catalog ``lc_key``.
+        mission_id (str): Mission slug from the caller or catalog ``lc_key``.
 
     Returns:
         MissionLightcurveProvider: Provider for the requested mission.
@@ -50,7 +52,7 @@ def get_provider(mission_id: str) -> MissionLightcurveProvider:
 
 
 def list_missions() -> list[MissionDescriptor]:
-    """Lists registered missions for UI selectors.
+    """Lists registered missions.
 
     Returns:
         list[MissionDescriptor]: Sorted mission metadata entries.

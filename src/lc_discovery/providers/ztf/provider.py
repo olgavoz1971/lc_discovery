@@ -28,6 +28,24 @@ class ZtfDr24Provider(MissionLightcurveProvider):
     mission_id = config.PROVIDER_ID
     display_name = config.DISPLAY_NAME
     export_profile = config.EXPORT_PROFILE
+    description = (
+      "Zwicky Transient Facility (ZTF) data release 24: an optical time-domain "
+      "survey with the 48-inch Samuel Oschin Telescope at Palomar Observatory, "
+      "California. Light curves come from the object catalogue.\n"
+      "Where from: the IRSA TAP service (table ztf_objects_dr24). The cone radius "
+      "is limited to 1 degree.\n"
+      "Bands: g, r and i; the i band is much sparser than g and r.\n"
+      "Time coverage: from March 2018 to late 2025(?). "
+      "DR24 is a fixed snapshot released on 22 January 2026, so it does not grow, "
+      "although ZTF itself continues to observe.\n"
+      "Sky: the northern sky visible from Palomar (roughly north of -30 degrees "
+      "declination), including the Galactic plane. Typical cadence is a few days, "
+      "and the limiting magnitude is about 20.5.\n"
+      "Id lookup: ZTF object id (OID, digits only). Simbad does not list it, so "
+      "for a named star use a cone search at the Simbad position.\n"
+      "Reference: Bellm et al. (2019), PASP 131, 018002; Masci et al. (2019), "
+      "PASP 131, 018003."
+    )
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=False,
@@ -56,7 +74,7 @@ class ZtfDr24Provider(MissionLightcurveProvider):
         return config.MAX_DISCOVERY_SEARCH_RADIUS_DEG
 
     def discovery_cone_limit_entity_label(self) -> str:
-        """Returns UI wording for cone truncation notices.
+        """Returns wording for cone truncation notices.
 
         Returns:
             str: Entity label for the discovery row cap.
@@ -67,7 +85,7 @@ class ZtfDr24Provider(MissionLightcurveProvider):
         """Parses digit-only ZTF OID strings before Simbad name resolution.
 
         Args:
-            name (str): Raw Target field text from the UI.
+            name (str): Raw Target field text from the caller.
 
         Returns:
             MissionArchiveMatch or None: OID match when recognised.
@@ -224,7 +242,7 @@ class ZtfDr24Provider(MissionLightcurveProvider):
         archive_id: str | None,
         object_name: str | None,
     ) -> int | None:
-        """Casts archive or UI text to a ZTF OID when possible.
+        """Casts archive or caller text to a ZTF OID when possible.
 
         Args:
             archive_id (str, optional): Mission-native archive id string.

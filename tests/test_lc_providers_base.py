@@ -44,6 +44,7 @@ def test_registered_provider_search_radius_caps():
         "personal_ts": 30.0,
         "ogle_ocvs": 10.0,
         "ztf_dr24": 1.0,
+        "tess": 10.0 / 60.0,
     }
     for mission_id, max_deg in expected.items():
         assert PROVIDERS[mission_id].max_discovery_search_radius_deg() == max_deg

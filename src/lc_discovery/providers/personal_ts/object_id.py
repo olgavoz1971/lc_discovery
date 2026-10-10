@@ -11,7 +11,7 @@ _PERSONAL_OBJECT_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*$")
 
 
 def normalize_personal_object_id(text: str) -> str | None:
-    """Normalises UI or Simbad text to a personal ``object_id`` when possible.
+    """Normalises caller or Simbad text to a personal ``object_id`` when possible.
 
     Personal archive ids commonly use underscores instead of spaces
     (e.g. ``AY_Lac`` for Simbad ``AY Lac``).

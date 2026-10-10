@@ -78,9 +78,9 @@ def _time_bound_clauses(
     """
     clauses: list[str] = []
     if time_start_mjd is not None:
-        clauses.append(f"t_min > {float(time_start_mjd)}")
+        clauses.append(f"t_max > {float(time_start_mjd)}")
     if time_end_mjd is not None:
-        clauses.append(f"t_max < {float(time_end_mjd)}")
+        clauses.append(f"t_min < {float(time_end_mjd)}")
     return clauses
 
 

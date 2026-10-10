@@ -24,7 +24,7 @@ def format_ps1_object_name(obj_id: int | str) -> str:
         obj_id (int or str): Pan-STARRS ``objID`` (may arrive as numpy scalar or str).
 
     Returns:
-        str: Human-readable label such as ``PS1 165243463579570976`` for AgGrid
+        str: Human-readable label such as ``PS1 165243463579570976`` for a results table
         ``object_name`` and lightcurve titles.
     """
     # Normalise to a plain integer: TAP may return int64; lc_key may store str digits.

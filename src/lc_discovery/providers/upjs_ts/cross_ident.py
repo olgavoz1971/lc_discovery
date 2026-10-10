@@ -47,7 +47,7 @@ def lookup_object_id_by_simbad_name(name: str) -> tuple[str, str] | None:
     """Resolves a Simbad-style name to ``object_id`` via ``upjs_ts.objects``.
 
     Args:
-        name (str): Simbad identifier text from the UI.
+        name (str): Simbad identifier text from the caller.
 
     Returns:
         tuple[str, str] or None: ``(object_id, matched_label)`` when recognised.
@@ -66,7 +66,7 @@ def lookup_object_id_by_vsx_name(name: str) -> tuple[str, str] | None:
     """Resolves a VSX name to ``object_id`` via ``upjs_ts.objects``.
 
     Args:
-        name (str): VSX catalogue name from the UI.
+        name (str): VSX catalogue name from the caller.
 
     Returns:
         tuple[str, str] or None: ``(object_id, matched_label)`` when recognised.

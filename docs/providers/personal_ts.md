@@ -24,7 +24,7 @@ FROM personal.ts_ssa
 WHERE 1 = CONTAINS(ssa_location, CIRCLE(<ra_deg>, <dec_deg>, <radius_deg>))
 ```
 
-When a time window is set, both queries add `AND t_min > <time_start_mjd>` and `AND t_max < <time_end_mjd>`. Either bound may be absent.
+When a time window is set, both queries add `AND t_max > <time_start_mjd>` and `AND t_min < <time_end_mjd>`, so a product is kept when its time span overlaps the window. Either bound may be absent. A product with a gap across the whole window still passes; the catalogue cannot tell.
 
 A name is resolved on `personal.objects` before the SSA lookup. That query does not return the light curve.
 
