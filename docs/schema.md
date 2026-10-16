@@ -12,6 +12,15 @@ Many providers supply a looser product than that. The work of this
 package is to reach the VO product without discarding a description that
 is already adequate.
 
+For the annotation of a light curve in a VOTable (time columns, photometry
+columns, their frames and calibration) the package is oriented on the
+IVOA Note [Time Series: Annotation of light curves in VOTable](https://www.ivoa.net/documents/Notes/LightCurveTimeSeries/index.html)
+(version 0.1, 22 November 2023; Nebot et al.). That document is a proposal
+that reuses parts of existing IVOA data models. It is an IVOA Note, not a
+standard, so "consistent with VO standards" here means: follows the
+approach of that proposal where it is clear, and the existing standards it
+builds on.
+
 ## Product
 
 The issued product is a fully calibrated light curve in **VOTable bytes**.
