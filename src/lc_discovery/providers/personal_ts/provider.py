@@ -12,6 +12,8 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.coverage import WAVEBAND_OPTICAL, MissionCoverage
+from lc_discovery.providers.personal_ts import registry_coverage
 from lc_discovery.lc_key import decode_lc_key
 from lc_discovery.providers.ogle_ocvs.fetch_accref import fetch_votable_bytes
 from lc_discovery.providers.personal_ts import config
@@ -40,6 +42,21 @@ class PersonalTsProvider(MissionLightcurveProvider):
         "Time coverage: depends on the collection.\n"
         "Id lookup: personal object id (TO CONFIRM: spelling and Simbad cross-match).\n"
         "Reference: depends on the collection."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. Also filled: survey (collection), provider_note. Filled "
+      "when the archive row has them: t_min and t_max (MJD), n_points, object_class, mag "
+      "(mean magnitude). Empty: filter_identifier, period, epoch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # Stored once from the VO Registry record, see registry_coverage.py.
+    coverage = MissionCoverage(
+        spatial=registry_coverage.REGISTRY_SPATIAL_MOC,
+        temporal=registry_coverage.REGISTRY_TEMPORAL,
+        spectral=registry_coverage.REGISTRY_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

@@ -13,8 +13,10 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared import filter_spectral_coverage
+from lc_discovery.coverage import ONGOING_MJD_END, WAVEBAND_OPTICAL, MissionCoverage
 from lc_discovery.lc_key import decode_lc_key
-from lc_discovery.providers.tess import config
+from lc_discovery.providers.tess import config, coverage_data
 from lc_discovery.providers.tess.catalog import map_search_table_to_catalog
 from lc_discovery.providers.tess.fetch_metadata import votable_from_lightcurve
 from lc_discovery.providers.tess.mast_search import search_by_tic, search_cone
@@ -59,6 +61,23 @@ class TessProvider(MissionLightcurveProvider):
       "Id lookup: TIC number (for example \"TIC 455790537\"); from Simbad take the "
       "identifier that starts with \"TIC \".\n"
       "Reference: Ricker et al. (2015), JATIS 1, 014003."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. One row per sector, author and exposure time. Also filled: "
+      "t_min and t_max (MJD of that product), filter_identifier, and the extra columns "
+      "sector, exp (exposure) and author (pipeline). Empty: n_points, mag, object_class, "
+      "survey, provider_note, period, epoch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # Time: from the start of the first sector (25 July 2018, MJD 58324), ongoing.
+    # Space: union of all sector footprints (tools/build_tess_coverage.py), see coverage_data.py.
+    coverage = MissionCoverage(
+        spatial=coverage_data.TESS_SPATIAL_MOC,
+        temporal=((58324.0, ONGOING_MJD_END),),
+        spectral=filter_spectral_coverage.TESS_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

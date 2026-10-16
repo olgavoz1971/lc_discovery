@@ -24,6 +24,8 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared import filter_spectral_coverage
+from lc_discovery.coverage import ALL_SKY_MOC, ONGOING_MJD_END, WAVEBAND_OPTICAL, MissionCoverage
 from lc_discovery.lc_key import decode_lc_key
 from lc_discovery.shared.gaia_dr3_source_id import (
     format_gaia_source_name,
@@ -44,7 +46,8 @@ class AsassnProvider(MissionLightcurveProvider):
         "ASAS-SN (All-Sky Automated Survey for Supernovae): a network of small robotic "
         "telescopes monitoring the whole visible sky, mainly for bright transients "
         "and variable stars.\n"
-        "Where from: the ASAS-SN Sky Patrol service (pyasassn client).\n"
+        "Where from: the ASAS-SN Sky Patrol service (pyasassn client from the fork "
+        "olgavoz1971/skypatrol; the upstream client is not enough).\n"
         "Bands: V and g. "
         "Time coverage: V band from 2013 to about 2018, g band from 2018 to the present "
         "(ongoing). Sources observed in both phases have a longer combined baseline.\n"
@@ -54,6 +57,22 @@ class AsassnProvider(MissionLightcurveProvider):
         "that starts with \"Gaia DR3 \".\n"
         "Reference: Shappee et al. (2014), ApJ 788, 48; Kochanek et al. (2017), "
         "PASP 129, 104502."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. Each source gives two rows (g and V candidate bands). Also "
+      "filled: survey, provider_note (the passband is not confirmed; the light curve may be "
+      "empty), mag (Pan-STARRS g mean magnitude, on the g row only). Empty: t_min, t_max, "
+      "n_points, filter_identifier, object_class, period, epoch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # Time: from 1 January 2013 (MJD 56293, maintainer-confirmed), ongoing.
+    coverage = MissionCoverage(
+        spatial=ALL_SKY_MOC,
+        temporal=((56293.0, ONGOING_MJD_END),),
+        spectral=filter_spectral_coverage.ASASSN_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

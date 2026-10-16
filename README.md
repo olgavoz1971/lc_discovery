@@ -8,6 +8,8 @@ pip install -e .
 pip install -e ".[dev]"
 # TESS archive plugin (installs Lightkurve; see below)
 pip install -e ".[tess]"
+# ASAS-SN provider (installs the maintainer's fork of skypatrol, not upstream)
+pip install -e ".[asassn]"
 ```
 
 Search for and retrieve light curves from the registered archives. The package knows nothing about any application, plot or UI. The
@@ -49,8 +51,32 @@ entry has:
 | `display_name` | Label for a mission selector. |
 | `export_profile` | Name of the export profile for this mission (a label for the caller). |
 | `description` | Human-readable text: what the source is, where it comes from, bands, time coverage, reference. |
+| `data_group` | Id of the content this mission serves. Missions with the same `data_group` serve the same data (for example `gaia_dr3_epoch_photometry`). A mission with unique content uses its own `mission_id`. |
+| `is_subset` | `True` when the mission serves only part of the `data_group` content (for example only eclipsing binaries). |
+| `subset_description` | What the subset holds; empty unless `is_subset` is `True`. |
+| `group_rank` | Order among the non-subset members of a group; lower is asked first. |
+| `coverage` | Space, time and spectrum of the whole mission, as in the VO Registry (`MissionCoverage`, see below). A part that is `None` is unknown, not empty. |
 | `capabilities` | What that mission accepts. See below. |
 | `is_mock` | `True` only for a synthetic mission. None of the registered missions are mocks. |
+
+`coverage` follows the VO Registry description of coverage (IVOA
+[VODataService 1.2](https://www.ivoa.net/documents/VODataService/20211102/REC-VODataService-1.2.html),
+section 3.2; [RegTAP 1.2](https://www.ivoa.net/documents/RegTAP/20241002/REC-RegTAP-1.2.html),
+tables `rr.stc_spatial`, `rr.stc_temporal`, `rr.stc_spectral`;
+[MOC 2.0](https://www.ivoa.net/documents/MOC/index.html)), so that providers can later be
+found through the Registry in the same terms. One spatial and one temporal coverage describe
+the whole mission:
+
+| Part | Meaning |
+| --- | --- |
+| `spatial` | A MOC in the IVOA ASCII serialisation, ICRS (`"0/0-11"` is the whole sky), or `None`. The package does not parse it and needs no MOC library; use one (for example MOCpy) to test a position. |
+| `temporal` | A tuple of `(start, end)` intervals in MJD (TDB), whole days, rounded outward; `100000` is the end of an ongoing mission; or `None`. |
+| `spectral` | A tuple of `(start, end)` intervals in joules (messenger energy), or `None`. |
+| `waveband` | A tuple of terms of the IVOA messenger vocabulary (for example `"Optical"`), or `None`. |
+
+`None` means unknown. It is never a reason to skip a mission.
+
+An agent reads the coverage before searching; the rules are in `.cursor/skills/lc-discovery/SKILL.md` (section "Coverage of a mission"). The coverage values are produced by the developer tools in `tools/` (extra `tools`).
 
 `capabilities` is a set of flags:
 
@@ -167,6 +193,14 @@ from astropy.io.votable import parse
 payload = fetch(catalog["lc_key"][0])
 votable = parse(io.BytesIO(payload))
 ```
+
+## Helper scripts for agents
+
+`scripts/` holds small helpers that are not public API and are not imported by the package.
+`scripts/vsx_resolve.py` finds a variable star in the AAVSO VSX index when Simbad cannot
+resolve its name. `scripts/simbad_resolve.py` resolves a name, or lists the objects around a
+position, in Simbad and returns what `archive_id_from_identifiers` needs (extra `scripts`, needs
+`astroquery`). The skill `lc-discovery` describes when and how to use them.
 
 ## What is not public
 

@@ -51,13 +51,51 @@ def get_provider(mission_id: str) -> MissionLightcurveProvider:
     return provider
 
 
+def validate_mission_groups(descriptors: list[MissionDescriptor]) -> None:
+    """Checks the data-group declarations of all missions together.
+
+    Rules: within a group the ``group_rank`` of the non-subset members is
+    unique, and a subset needs at least one non-subset member in its group.
+
+    Args:
+        descriptors (list[MissionDescriptor]): Descriptors of all missions.
+
+    Raises:
+        ValueError: When a rule is broken; the message names the group and
+            the missions.
+    """
+    groups: dict[str, list[MissionDescriptor]] = {}
+    for item in descriptors:
+        groups.setdefault(item.data_group, []).append(item)
+    for group, members in groups.items():
+        full = [m for m in members if not m.is_subset]
+        subsets = [m for m in members if m.is_subset]
+        if subsets and not full:
+            names = ", ".join(m.mission_id for m in subsets)
+            raise ValueError(
+                f"Data group '{group}': subset mission(s) {names} have no non-subset "
+                "member in the same group."
+            )
+        seen: dict[int, str] = {}
+        for member in full:
+            if member.group_rank in seen:
+                raise ValueError(
+                    f"Data group '{group}': missions '{seen[member.group_rank]}' and "
+                    f"'{member.mission_id}' have the same group_rank {member.group_rank}."
+                )
+            seen[member.group_rank] = member.mission_id
+
+
 def list_missions() -> list[MissionDescriptor]:
     """Lists registered missions.
 
     Returns:
         list[MissionDescriptor]: Sorted mission metadata entries.
+
+    Raises:
+        ValueError: When a provider misses a mandatory attribute or the data
+            groups are inconsistent.
     """
-    return sorted(
-        (provider.descriptor() for provider in PROVIDERS.values()),
-        key=lambda item: item.display_name.lower(),
-    )
+    descriptors = [provider.descriptor() for provider in PROVIDERS.values()]
+    validate_mission_groups(descriptors)
+    return sorted(descriptors, key=lambda item: item.display_name.lower())

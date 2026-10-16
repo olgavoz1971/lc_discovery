@@ -21,6 +21,17 @@ Register the class in `src/lc_discovery/registry.py`. Applications call `list_mi
 
 Set `description` on the provider (checklist in `docs/adding_a_lightcurve_provider.md`, section 2.1). Use `TO CONFIRM` for facts not yet checked; do not guess coverage dates, bands or references. When `supports_id_lookup` is true, include the "Id lookup" line: which id the mission takes as `archive_id`, and which Simbad identifier it comes from (or that Simbad does not list it). Set `supports_discovery_time_filter` to match the description: false when the search ignores time windows.
 
+End the description with a `Search row columns:` paragraph (guide, section 2.1, point 8): the columns the search rows fill, the empty ones, what each filled one means for this mission, and the rows per star. Verify it with a real `search` call.
+
+## Data group
+
+Set `data_group`, `is_subset`, `subset_description` and `group_rank` on the provider (`docs/adding_a_lightcurve_provider.md`, section 2.2). Alone: `data_group = mission_id`, `is_subset = False`, `subset_description = ""`, `group_rank = 1`. Same data as an existing provider: reuse its `data_group` and take a free `group_rank`. Only part of another provider's data: reuse its `data_group`, set `is_subset = True` and describe the subset. Ask the maintainer for the rank; do not choose a reason for it.
+
+## Coverage
+
+Set `coverage = MissionCoverage(spatial=..., temporal=..., spectral=..., waveband=...)` (`docs/adding_a_lightcurve_provider.md`, section 2.3). All four arguments are required; `None` means unknown. Do not invent values: leave `None` and say so in the provider note until the maintainer confirms them. Time limits are whole MJD days, rounded outward.
+Use the tools in `tools/` to produce the values (table in section 2.3 of the provider guide) instead of typing MOC strings by hand.
+
 ## Search
 
 Implement `search_catalog` with cone, name, and/or archive id according to `MissionCapabilities`. Do not invent collection names or filter identifiers. Opaque `lc_key` via package `lc_key` helpers inside the plugin only. Extra result-table columns are a declared `(field, header)` list on the provider (default none). Do not add mission-specific names to the core catalogue schema.

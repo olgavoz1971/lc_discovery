@@ -113,12 +113,66 @@ point, in this order:
    id, say so and name the fallback ("use a cone search at the Simbad position").
    Required when `supports_id_lookup` is true.
 7. **Reference:** a bibcode or an archive URL.
+8. **Search row columns:** one paragraph, last in the description, starting with
+   `Search row columns:`. Say which catalogue columns the search rows fill, which stay empty,
+   what each filled column means for this mission (for example "mag is the mean G magnitude,
+   on the G row only"), and how many rows one star gives. Agents read this paragraph to learn
+   what they can answer from the search result without fetching. Check it against a real
+   `search` result, not against the code alone.
 
 Do not repeat search kinds, window support or calibration; those live in the
 capability flags and the provider note. Do not invent facts: write
 `TO CONFIRM` where a fact is not yet checked, and settle it with the
 maintainer. There is no automatic check of the text beyond the attribute
 being present; a provider without `description` fails in `list_missions()`.
+
+### 2.2 Data group (required attributes)
+
+Every provider also sets four class attributes that say whether other missions
+serve the same data. A provider that does not set them fails in `list_missions()`.
+
+| Attribute | Value |
+|-----------|-------|
+| `data_group` | Id of the shared content, for example `"gaia_dr3_epoch_photometry"`. A provider with unique content uses its own `mission_id` (`data_group = mission_id`). Different collections on one TAP service are different data. |
+| `is_subset` | `False`, or `True` when the provider serves only part of the group's content. |
+| `subset_description` | Text saying what the subset holds (required when `is_subset` is `True`, otherwise `""`). Use `TO CONFIRM` for unchecked facts. |
+| `group_rank` | Integer `>= 1`. Among the non-subset members of a group the lowest rank is asked first. Ranks must be unique in a group. The maintainer chooses it; the package does not state a reason. Use `1` when alone. |
+
+Checked when the missions are listed: ranks of the non-subset members are unique in
+a group, and a subset needs at least one non-subset member in its group. Providers
+do not name each other.
+
+### 2.3 Coverage (required attribute)
+
+Every provider sets `coverage = MissionCoverage(spatial=..., temporal=..., spectral=..., waveband=...)`
+(import from `lc_discovery.coverage`). All four arguments are required; write `None` for a part
+that is not known. The model is the VO Registry's coverage (IVOA VODataService 1.2, section 3.2;
+RegTAP 1.2, tables `rr.stc_spatial`, `rr.stc_temporal`, `rr.stc_spectral`; MOC 2.0). We follow it
+so that providers can later be found through the Registry. One spatial and one temporal coverage
+describe the whole mission (no per-field or per-sector entries).
+
+- `spatial`: an IVOA MOC string in ICRS (`"0/0-11"` is the whole sky).
+- `temporal`: intervals in MJD (TDB), whole days, start rounded down and end rounded up
+  (the end date means the end of that day); `100000` as the end of an ongoing mission.
+- `spectral`: intervals in joules, taken from the filter profiles (SVO) of the filters in the
+  photcal; convert with `astropy.units`.
+- `waveband`: terms of the IVOA messenger vocabulary.
+
+Use `TO CONFIRM` in the provider note for values that are not checked; do not invent values.
+The package checks only the structure (types, ordered finite limits, whole days).
+
+Developer tools in `tools/` (not public, not imported by the package; install the extra with
+`pip install -e .[tools]`) produce the values; run them from the package root and import the
+generated module in the provider:
+
+| Tool | Writes | Use for |
+| --- | --- | --- |
+| `fetch_registry_coverage.py <provider> <ivoid>` | `providers/<provider>/registry_coverage.py` | Missions with a Registry record that has coverage rows (RegTAP, `pyvo`). |
+| `build_sky_zones.py` | `shared/sky_zones.py` | Declination bands (MOCpy). |
+| `build_tess_coverage.py` | `providers/tess/coverage_data.py` | TESS footprint from `tess-point` (MOCpy). |
+| `fetch_filter_coverage.py` | `shared/filter_spectral_coverage.py` | Rough spectral limits from `ivo://astro.upjs/filters/q/main`. |
+
+How an agent uses coverage is described in `.cursor/skills/lc-discovery/SKILL.md`.
 
 ### 3. Catalogue rows and `lc_key`
 

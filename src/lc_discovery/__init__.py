@@ -13,10 +13,12 @@ from lc_discovery.api import (
     search,
 )
 from lc_discovery.base import MissionArchiveMatch
+from lc_discovery.coverage import MissionCoverage
 from lc_discovery.registry import list_missions
 
 __all__ = [
     "MissionArchiveMatch",
+    "MissionCoverage",
     "archive_id_from_identifiers",
     "fetch",
     "list_missions",

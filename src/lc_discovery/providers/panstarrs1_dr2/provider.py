@@ -12,6 +12,9 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared import filter_spectral_coverage
+from lc_discovery.coverage import WAVEBAND_OPTICAL, MissionCoverage
+from lc_discovery.shared.sky_zones import DEC_ABOVE_MINUS_30_MOC
 from lc_discovery.discovery_fetch_context import DiscoveryFetchContext
 from lc_discovery.lc_key import decode_lc_key
 from lc_discovery.providers.panstarrs1_dr2 import config
@@ -48,6 +51,21 @@ class Panstarrs1Dr2Provider(MissionLightcurveProvider):
        "for a named star use a cone search at the Simbad position.\n"
        "Reference: Chambers et al. (2016), arXiv:1612.05560; Flewelling et al. (2020), "
        "ApJS 251, 7 (data release)."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. One row per band found (g, r, i, z, y). Also filled: "
+      "filter_identifier, n_points (detections in that band), mag (mean PSF magnitude), "
+      "survey, provider_note. Empty: t_min, t_max, object_class, period, epoch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # 1 January 2010 (MJD 55197) to the end of 31 March 2014 (MJD 56748).
+    coverage = MissionCoverage(
+        spatial=DEC_ABOVE_MINUS_30_MOC,
+        temporal=((55197.0, 56748.0),),
+        spectral=filter_spectral_coverage.PS1_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

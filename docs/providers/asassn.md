@@ -2,6 +2,16 @@
 
 Expands [schema.md](../schema.md). Discovery and retrieval only. Enrichment is not reviewed here.
 
+## 0. Dependency
+
+The provider needs the maintainer's fork of Sky Patrol, `olgavoz1971/skypatrol` (branch `master`; module `pyasassn`), not the upstream `asas-sn/skypatrol`. Install it with `pip install -e ".[asassn]"` or `pip install "skypatrol @ git+https://github.com/olgavoz1971/skypatrol.git@master"`. The fork differs from upstream in three ways the provider relies on:
+
+- it downloads with `multiprocessing.dummy.ThreadPool`, because Celery workers are daemonic and cannot start child processes;
+- it raises `ConnectionError` ("reports no lightcurve servers") when `get_block_servers` returns an empty list, instead of `ZeroDivisionError`;
+- it carries the fix for the `ra=0 dec=0` query bug.
+
+If you reinstall after a fork change and the version number is unchanged, use `pip install --force-reinstall --no-deps`, otherwise `pip` keeps the old copy.
+
 ## 1. Discovery
 
 Sky Patrol client `pyasassn.client.SkyPatrolClient`, catalogue `stellar_main`. Time bounds are not applied. The columns requested are `asas_sn_id`, `ra_deg`, `dec_deg`, `pstarrs_g_mag`. `download=False`.

@@ -15,6 +15,7 @@ from lc_discovery.catalog_schema import (
     DISCOVERY_META_TRUNCATION_DETAIL,
     sort_catalog_by_distance,
 )
+from lc_discovery.coverage import MissionCoverage, validate_coverage
 from lc_discovery.discovery_fetch_context import DiscoveryFetchContext
 from lc_discovery.lc_key import cache_key, validate_lc_key
 
@@ -50,6 +51,11 @@ class MissionDescriptor:
     capabilities: MissionCapabilities
     is_mock: bool = False
     description: str = ""
+    data_group: str = ""
+    is_subset: bool = False
+    subset_description: str = ""
+    group_rank: int = 1
+    coverage: MissionCoverage | None = None
 
 
 @dataclass(frozen=True)
@@ -69,6 +75,11 @@ class MissionLightcurveProvider(ABC):
     export_profile: str
     capabilities: MissionCapabilities
     description: str  # human-readable checklist text, see docs/adding_a_lightcurve_provider.md
+    data_group: str  # shared content id; own mission_id when nothing else serves the same data
+    is_subset: bool  # True when this mission serves only part of the data_group content
+    subset_description: str  # what the subset holds (required when is_subset is True, else "")
+    group_rank: int  # order among non-subset members of the group; lower is asked first
+    coverage: MissionCoverage  # space, time and spectrum of the whole mission (None parts = unknown)
     is_mock: bool = False
 
     @abstractmethod
@@ -317,15 +328,84 @@ class MissionLightcurveProvider(ABC):
 
         Returns:
             MissionDescriptor: Mission identity and capability summary.
+
+        Raises:
+            ValueError: When the provider does not set ``description``, one
+                of the group attributes (``data_group``, ``is_subset``,
+                ``subset_description``, ``group_rank``) or ``coverage``, or
+                sets one with the wrong type or an invalid value.
         """
+        values = {
+            name: self._required_attribute(name)
+            for name in (
+                "description",
+                "data_group",
+                "is_subset",
+                "subset_description",
+                "group_rank",
+                "coverage",
+            )
+        }
+        self._validate_group_attributes(values)
+        validate_coverage(self.mission_id, values["coverage"])
         return MissionDescriptor(
             mission_id=self.mission_id,
             display_name=self.display_name,
             export_profile=self.export_profile,
             capabilities=self.capabilities,
             is_mock=self.is_mock,
-            description=self.description,
+            **values,
         )
+
+    def _required_attribute(self, name: str):
+        """Reads a mandatory provider attribute.
+
+        Args:
+            name (str): Attribute name.
+
+        Returns:
+            object: The attribute value.
+
+        Raises:
+            ValueError: When the provider does not define the attribute.
+        """
+        try:
+            return getattr(self, name)
+        except AttributeError:
+            raise ValueError(
+                f"Mission '{self.mission_id}': the provider must set '{name}' "
+                "(see docs/adding_a_lightcurve_provider.md)."
+            ) from None
+
+    def _validate_group_attributes(self, values: dict) -> None:
+        """Checks the types and values of the data-group attributes.
+
+        Args:
+            values (dict): Attribute values read from the provider.
+
+        Raises:
+            ValueError: When a value has the wrong type or is not allowed.
+        """
+        mission = self.mission_id
+        group = values["data_group"]
+        if not isinstance(group, str) or not group.strip():
+            raise ValueError(f"Mission '{mission}': 'data_group' must be a non-empty string.")
+        if not isinstance(values["is_subset"], bool):
+            raise ValueError(f"Mission '{mission}': 'is_subset' must be a bool.")
+        rank = values["group_rank"]
+        if isinstance(rank, bool) or not isinstance(rank, int) or rank < 1:
+            raise ValueError(f"Mission '{mission}': 'group_rank' must be an integer >= 1.")
+        text = values["subset_description"]
+        if not isinstance(text, str):
+            raise ValueError(f"Mission '{mission}': 'subset_description' must be a string.")
+        if values["is_subset"] and not text.strip():
+            raise ValueError(
+                f"Mission '{mission}': 'subset_description' is required when 'is_subset' is True."
+            )
+        if not values["is_subset"] and text.strip():
+            raise ValueError(
+                f"Mission '{mission}': 'subset_description' must be empty when 'is_subset' is False."
+            )
 
     def _require_cone_search(
         self,

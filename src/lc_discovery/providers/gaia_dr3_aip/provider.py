@@ -12,6 +12,7 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared.gaia_dr3_coverage import GAIA_DR3_EPOCH_PHOTOMETRY_COVERAGE
 from lc_discovery.providers.gaia_dr3_aip import config
 from lc_discovery.providers.gaia_dr3_aip.fetch_metadata import votable_from_cached_epoch
 from lc_discovery.providers.gaia_dr3_aip.catalog import map_source_table_to_catalog
@@ -55,7 +56,17 @@ class GaiaDr3AipProvider(MissionLightcurveProvider):
       "Reference: Gaia Collaboration, Vallenari et al. (2023), A&A 674, A1 "
       "(Gaia DR3 summary); Gaia Collaboration, Prusti et al. (2016), A&A 595, A1 "
       "(the mission)."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. Three rows per source (G, BP, RP). Also filled: "
+      "filter_identifier, survey, provider_note, object_class (Gaia variability class), mag "
+      "(mean G magnitude, on the G row only). Empty in a plain search: t_min, t_max, "
+      "n_points, period, epoch; time coverage and epoch photometry are read at fetch."
     )
+    data_group = "gaia_dr3_epoch_photometry"
+    is_subset = False
+    subset_description = ""
+    group_rank = 2
+    coverage = GAIA_DR3_EPOCH_PHOTOMETRY_COVERAGE
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,

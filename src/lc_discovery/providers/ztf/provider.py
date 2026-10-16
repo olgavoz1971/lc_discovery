@@ -8,6 +8,9 @@ from astropy.table import Table
 
 from lc_discovery.base import MissionArchiveMatch, MissionCapabilities, MissionLightcurveProvider
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared import filter_spectral_coverage
+from lc_discovery.coverage import WAVEBAND_OPTICAL, MissionCoverage
+from lc_discovery.shared.sky_zones import DEC_ABOVE_MINUS_30_MOC
 from lc_discovery.discovery_fetch_context import DiscoveryFetchContext
 from lc_discovery.lc_key import decode_lc_key
 from lc_discovery.providers.ztf import config
@@ -35,7 +38,7 @@ class ZtfDr24Provider(MissionLightcurveProvider):
       "Where from: the IRSA TAP service (table ztf_objects_dr24). The cone radius "
       "is limited to 1 degree.\n"
       "Bands: g, r and i; the i band is much sparser than g and r.\n"
-      "Time coverage: from March 2018 to late 2025(?). "
+      "Time coverage: from 1 March 2018 to 22 October 2025. "
       "DR24 is a fixed snapshot released on 22 January 2026, so it does not grow, "
       "although ZTF itself continues to observe.\n"
       "Sky: the northern sky visible from Palomar (roughly north of -30 degrees "
@@ -45,6 +48,23 @@ class ZtfDr24Provider(MissionLightcurveProvider):
       "for a named star use a cone search at the Simbad position.\n"
       "Reference: Bellm et al. (2019), PASP 131, 018002; Masci et al. (2019), "
       "PASP 131, 018003."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. One row per ZTF object id and band (several object ids can "
+      "be found near one star). Also filled: filter_identifier, n_points (good epochs in "
+      "that band), mag (mean magnitude), survey. Empty: t_min, t_max, object_class, "
+      "provider_note, period, epoch; the time span is known only after fetch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # Time: survey start 1 March 2018 (MJD 58178); DR24 ends on 22 October 2025, and the
+    # end of that day is MJD 60971 (maintainer-confirmed).
+    coverage = MissionCoverage(
+        spatial=DEC_ABOVE_MINUS_30_MOC,
+        temporal=((58178.0, 60971.0),),
+        spectral=filter_spectral_coverage.ZTF_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

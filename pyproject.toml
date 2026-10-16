@@ -15,11 +15,15 @@ dependencies = [
     "astropy",
     "pandas",
     "requests",
+    "pyvo",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest"]
 tess = ["lightkurve"]
+asassn = ["skypatrol @ git+https://github.com/olgavoz1971/skypatrol.git@master"]
+scripts = ["astroquery"]
+tools = ["mocpy", "tess-point"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -12,6 +12,7 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared.gaia_dr3_coverage import GAIA_DR3_EPOCH_PHOTOMETRY_COVERAGE
 from lc_discovery.providers.gaia_dr3_veb import config
 from lc_discovery.providers.gaia_dr3_veb.fetch_accref import fetch_votable_bytes
 from lc_discovery.providers.gaia_dr3_veb.fetch_metadata import enrich_votable
@@ -48,7 +49,19 @@ class GaiaDr3VebProvider(MissionLightcurveProvider):
         "Reference: Gaia Collaboration, Vallenari et al. (2023), A&A 674, A1 "
         "(Gaia DR3 summary); Gaia Collaboration, Prusti et al. (2016), A&A 595, A1 "
         "(the mission)."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. Three rows per source (G, BP, RP). Also filled: t_min and "
+      "t_max (MJD of that series), n_points (points in that band), object_class (for "
+      "example EB*), survey, provider_note. Empty: mag, filter_identifier, period, epoch."
     )
+    data_group = "gaia_dr3_epoch_photometry"
+    is_subset = True
+    subset_description = (
+        "Gaia DR3 eclipsing-binary candidates only, as selected in the UPJS archive "
+        "(TO CONFIRM: exact selection). Other Gaia sources are not included."
+    )
+    group_rank = 1
+    coverage = GAIA_DR3_EPOCH_PHOTOMETRY_COVERAGE
     capabilities = MissionCapabilities(
         supports_cone_search=True,
         supports_name_resolve=True,

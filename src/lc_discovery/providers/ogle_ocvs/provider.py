@@ -12,6 +12,9 @@ from lc_discovery.base import (
     MissionLightcurveProvider,
 )
 from lc_discovery.catalog_schema import empty_catalog_table
+from lc_discovery.shared import filter_spectral_coverage
+from lc_discovery.coverage import ONGOING_MJD_END, WAVEBAND_OPTICAL, MissionCoverage
+from lc_discovery.providers.ogle_ocvs import coverage_data
 from lc_discovery.lc_key import decode_lc_key
 from lc_discovery.providers.ogle_ocvs import config
 from lc_discovery.providers.ogle_ocvs.fetch_accref import fetch_votable_bytes
@@ -52,6 +55,23 @@ class OgleOcvsProvider(MissionLightcurveProvider):
       "Reference: Udalski, Szymański & Szymański (2015), Acta Astronomica 65, 1 "
       "(OGLE-IV survey); individual OCVS catalogues are described in the "
       "papers by Soszyński et al. (variable-type specific)."
+      "\nSearch row columns: distance_arcsec, ra_deg, dec_deg, object_name, filter_name and "
+      "lc_key are always filled. Also filled: survey, provider_note (dataset title). Filled "
+      "when the archive row has them: t_min and t_max (MJD), n_points, object_class, mag "
+      "(mean magnitude). Empty: filter_identifier, period, epoch."
+    )
+    data_group = mission_id
+    is_subset = False
+    subset_description = ""
+    group_rank = 1
+    # Space: MOC supplied by the maintainer (the Registry record has no coverage), see
+    # coverage_data.py. Time: from 1 January 1992 (MJD 48622), open end (the survey is
+    # ongoing). Spectrum is unknown (None) until confirmed.
+    coverage = MissionCoverage(
+        spatial=coverage_data.OGLE_SPATIAL_MOC,
+        temporal=((48622.0, ONGOING_MJD_END),),
+        spectral=filter_spectral_coverage.OGLE_SPECTRAL,
+        waveband=WAVEBAND_OPTICAL,
     )
     capabilities = MissionCapabilities(
         supports_cone_search=True,

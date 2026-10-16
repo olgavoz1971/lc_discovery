@@ -23,6 +23,11 @@ def create_skypatrol_client(*, verbose: bool = False):
         from pyasassn.client import SkyPatrolClient
     except ImportError as exc:
         raise ImportError(
-            "pyasassn is required for the ASAS-SN provider but is not installed."
+            "pyasassn is required for the ASAS-SN provider but is not installed. Install "
+            "the maintainer's fork (the upstream package is not enough: it cannot run in "
+            "daemonic Celery workers and fails with ZeroDivisionError when the archive "
+            "reports no lightcurve servers): "
+            "pip install 'skypatrol @ git+https://github.com/olgavoz1971/skypatrol.git@master' "
+            "or pip install -e '.[asassn]'."
         ) from exc
     return SkyPatrolClient(verbose=verbose)
