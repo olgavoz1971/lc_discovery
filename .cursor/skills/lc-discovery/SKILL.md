@@ -71,9 +71,38 @@ Rules for the VSX server: one request at a time, no loops over long lists, no pe
 
 1. **Read the columns of the table you got** (`catalog.colnames`) and look at the values before you decide anything. Columns differ between missions; an empty (masked) value means "not known at search time", not "zero".
 2. **Read the paragraph `Search row columns:` in the mission `description`** (from `list_missions()`). It says which columns that mission fills, what they mean there (for example "mag is the mean G magnitude, on the G row only") and how many rows one star gives.
-3. **Show the researcher the useful columns** when you list results: at least filter, number of points and time span where they are filled, mean magnitude, class and period if present, and any `provider_note`. Say which columns are empty for that mission instead of leaving them out silently.
+3. **Show the researcher all the columns that carry information.** The search result already holds only the columns that matter, so do not choose among them yourself.
+   - Show every column that has at least one value, in the table order, except `lc_key` (an opaque handle for the software; keep it in the saved file).
+   - A column that is empty in every row may be left out of the display; say so in one line ("not filled for this mission: n_points, mag").
+   - A column with the same value in every row (for example `survey` or `filter_identifier`) may be stated once above the table.
+   - Do not rank columns or recommend a product unless the user asks. Show the facts.
+   - Your own summary must not reduce the columns to a count: a number of "products" next to a short list of sectors cannot be checked by the user. Keep the columns that tell the light curves apart (for TESS: sector, exposure time, author).
 4. **Answer from the table before fetching.** Questions such as "how many points", "which filter", "how bright", "which is the longest" are often answered by the table. Fetch only what the table cannot answer (for example the real time span when `t_min` and `t_max` are empty), and tell the user why you fetch. "Longest" can mean most points (`n_points`) or longest time span (`t_max - t_min`); say which you used, or ask.
 5. **Do not mix columns across rows.** One row is one light curve in one filter. A value such as `mag` may belong to one band only.
+6. **Keep the search result.** Save every search table to a file and tell the user the path. Use ECSV (`catalog.write(path, format="ascii.ecsv")`): it keeps types, masked values and `meta` (including the truncation flags). A folder such as `lc_discovery_results/` in the user's working directory is a good place, with a name that says the mission and the target. When the user asks something more about a result, **read the saved file; do not search again** (searches can be slow). Search again only if the user asks for fresh data or a different query. Keep the whole table available, not only your summary of it.
+7. **Many targets.** For a list of stars, one table of hundreds of rows is unreadable, and a table of counts is too thin. Give one line per target that still uses the columns (for example: name and archive id, number of rows, the distinct values of the columns that separate light curves, the time span as calendar dates from `t_min` and `t_max`, filled `mag`/`n_points`), mark targets with no rows explicitly ("no TESS light curve found"), and offer the full per-row table from the saved file on request. Example for TESS, after searching each star by its TIC (the values are illustrative only): `AR Lac | TIC 420116962 | 16 rows | sectors 16, 56, 76, 83 | exposure 120 s, 200 s, 600 s | authors SPOC, QLP, TESS-SPOC, TARS | 2019-09 to 2024-09`. Build such lines from the table, never from memory.
+
+## Respect the metadata of the product
+
+The package issues a calibrated, self-describing light curve. Read its metadata and use it. Never hardcode or assume an offset, a time scale, a flux zero point or a unit, unless the user explicitly asks you to. Tell the user which time system and photometric system you used.
+
+- **`TIMESYS`**: `timescale` (for example TDB, TCB, UTC), `refposition` (for example BARYCENTER) and `timeorigin`. A time value is relative to `timeorigin`: the values in the column are days since that Julian Date (a `timeorigin` of 2400000.5 means MJD, 2457000 means BTJD). Different missions use different origins; read it for each light curve.
+- **`COOSYS`**: the reference frame and epoch of the coordinates.
+- **`PHOTCAL`**: filter, magnitude system and zero point of each photometry column. The magnitude system need not be Pogson, so do not write magnitude-flux formulae yourself; the calibration says how to convert.
+- Units and UCDs on the FIELDs tell which column is time, magnitude, flux or error. Do not guess them from column names.
+
+Recommended, not required: the `volightcurve` package (https://github.com/olgavoz1971/volightcurve) reads such a VOTable with `read_lightcurve`, and returns the table, `timesys`, `photdms` (filter and `PhotCal`) and the column-discovery helpers (`get_time_colnames`, `get_flux_colnames`, ...). `PhotCal.mag_to_flux` and `flux_to_mag` do the conversions and raise `PhotCalError` instead of inventing a zero point. `volightcurve` has its own skill under `.cursor/skills/volightcurve/`. Without it, read the same elements from the VOTable with `astropy.io.votable` and report what you found.
+
+## Folded light curves: period and epoch
+
+When the user asks for a folded (phase) light curve, you need a period and, for a phase zero point, an epoch.
+
+1. **Look in the fetched VOTable first.** Some products carry the table PARAMs `period` (unit `d`, UCD `src.var;time.period`) and `epoch` (UCD `time.epoch`). Where they come from depends on the mission (for example ASAS-SN reads them from its own copy of the VSX data, Gaia from the variability tables, TESS only for the TARS author). An empty or zero epoch means "not given".
+2. **If the period is missing, look it up in VSX.** Use `scripts/vsx_resolve.py` (section "Variable stars that Simbad does not know" above): `period_days`, `epoch_jd` and `variability_type` are in its record. Do not invent a period, and do not estimate one from the data unless the user asks for it. If VSX has no period either, tell the user and ask.
+3. **The epoch is optional.** Without it, fold with an arbitrary zero point (for example the first observation) and say so.
+4. **ALWAYS tell the user explicitly where each element came from**: "period 0.9 d from the VOTable (author TARS)", "epoch from VSX, JD 24xxxxx, VSX type EA", or "epoch not available; zero phase is the first point". If the values differ between sources, show both and say which one you used and why.
+5. **Time system of the epoch.** VSX documents its epoch as HJD (VizieR B/vsx), but old entries come from the GCVS and old papers in JD, some papers use BJD, and the VSX web service returns a bare number with no label. Take the time system of the light curve from its `TIMESYS` (see "Respect the metadata of the product"), convert the VSX epoch to that convention with `astropy.time`, and tell the user the assumption ("VSX epoch, documented as HJD, treated as the same system as the light curve"). The difference between HJD, BJD and JD is at most about 8 minutes: irrelevant for a plot, relevant for precise timing.
+6. **What the epoch means.** For most pulsating variables it marks a maximum, for eclipsing, ellipsoidal, RV Tau and dark-spotted stars a minimum (check `variability_type`); say which one you assume. Do not test the epoch against the data: periods change and other effects act, so for many variable stars the epoch does not land precisely on an extremum at every cycle, and such a check usually fails. If the folded curve looks shifted, report it to the user; do not tune the epoch silently.
 
 ## Plotting a fetched light curve (advice)
 

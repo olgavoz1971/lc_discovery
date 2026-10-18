@@ -52,7 +52,9 @@ class VsxObject:
         dec_deg: Declination, J2000, degrees.
         variability_type: VSX variability type, if present.
         period_days: Period in days, if present.
-        epoch_jd: Epoch of maximum or minimum in JD, if present.
+        epoch_jd: Epoch of maximum or minimum as a Julian Date number, if
+            present. VSX documents it as HJD, but old entries may be JD or BJD
+            and the API gives no time-system label.
         max_mag: Brightest magnitude text (with band), if present.
         min_mag: Faintest magnitude text (with band), if present.
         spectral_type: Spectral type, if present.
