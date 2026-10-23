@@ -173,3 +173,20 @@ def test_ari_fetch_lightcurve_local_sample(monkeypatch):
     assert volc.photdms["mag"].filter.filter_id == "GAIADR3.G"
     assert float(volc.photdms["mag"].photcal.zp_mag.value) == 0.0
     assert volc.table.meta.get("period") == pytest.approx(1.7217551595287013)
+
+
+def test_ari_enrich_corrects_units_that_are_not_vounits():
+    """``e-/s`` becomes ``s**-1`` and ``Angstrom`` becomes ``0.1nm``; other units stay as sent."""
+    import re
+
+    from lc_discovery.providers.gaia_dr3_ari.fetch_metadata import enrich_votable
+
+    sample = (Path(__file__).resolve().parent / "data" / "gaia_ari.vot").read_bytes()
+    before = sample.decode("utf-8")
+    assert 'unit="e-/s"' in before
+    after = enrich_votable(sample, table_id=0).decode("utf-8")
+    units = set(re.findall(r'unit="([^"]*)"', after))
+    assert "e-/s" not in units
+    assert "Angstrom" not in units
+    assert "s**-1" in units
+    assert "d" in units

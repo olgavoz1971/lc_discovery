@@ -376,3 +376,28 @@ def test_contradicting_time_system_raises():
     lc.time.format = "jd"
     with pytest.raises(ValueError, match="BTJD"):
         votable_from_lightcurve(lc, tic=7, sector=1, author="X", exptime=1.0)
+
+
+def test_spoc_issued_electron_flux_is_valid_vounits_in_a_vounits_capable_table():
+    """Electrons per second is issued as ``s**-1`` and the table declares VOTable 1.4.
+
+    VOUnits 1.1 has no electron, and Astropy reads VOUnits only from VOTable 1.4 on,
+    so both the unit text and the version matter for a strict reader.
+    """
+    names = ["time", "pdcsap_flux", "pdcsap_flux_err", "sap_bkg"]
+    lc = _FakeLC(
+        names,
+        units={name: "electron s-1" for name in names if name != "time"},
+        data={
+            "time": np.array([1400.0, 1400.1]),
+            "pdcsap_flux": np.array([100.0, 101.0]),
+            "pdcsap_flux_err": np.array([1.0, 1.0]),
+            "sap_bkg": np.array([5.0, 5.1]),
+        },
+    )
+    payload = votable_from_lightcurve(lc, tic=1, sector=16, author="SPOC", exptime=120.0)
+    xml = payload.decode("utf-8")
+    assert 'version="1.4"' in xml
+    assert "electron" not in xml
+    assert 'name="zeroPointFlux"' in xml
+    assert xml.count('unit="s**-1"') >= 4

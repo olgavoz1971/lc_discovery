@@ -110,7 +110,7 @@ def _ogle_issued() -> bytes:
 
 def _tess_issued() -> bytes:
     """Returns the recorded TESS-SPOC product (TIC 455790537, sector 16) as Discovery issued it."""
-    return (_DATA / "tess_spoc_issued.vot").read_bytes()
+    return (_DATA / "tess_spoc_sector16_orig.vot").read_bytes()
 
 
 def _gaia_aip_issued() -> bytes:
@@ -218,21 +218,8 @@ BASELINE: dict[str, dict] = {
         ],
         "time_problems": [],
         "unit_findings": {},
-        "conversion_problems": {
-            "mag": [],
-            "limitmag": ["Column 'limitmag' has no photometric " "calibration (photcal)."],
-        },
-        "suggested": {
-            "calibration": {
-                "limitmag": {
-                    "magnitude_system": "Vega",
-                    "zp_mag": 0.0,
-                    "zp_flux": 1.0,
-                    "zp_mag_unit": "mag",
-                    "zp_flux_unit": None,
-                }
-            }
-        },
+        "conversion_problems": {"mag": []},
+        "suggested": {},
         "timesys": {"timescale": "UTC", "refposition": "HELIOCENTER", "timeorigin": 0.0},
         "photcal": {
             "mag_err": {
@@ -251,19 +238,47 @@ BASELINE: dict[str, dict] = {
     },
     "tess, as issued": {
         "parses": True,
-        "columns": ["jd", "flux", "flux_err"],
+        "columns": [
+            "time",
+            "pdcsap_flux",
+            "pdcsap_flux_err",
+            "sap_flux",
+            "sap_flux_err",
+            "sap_bkg",
+            "sap_bkg_err",
+        ],
         "time_problems": [],
         "unit_findings": {},
-        "conversion_problems": {"flux": []},
+        "conversion_problems": {"pdcsap_flux": [], "sap_flux": []},
         "suggested": {},
         "timesys": {"timescale": "TDB", "refposition": "BARYCENTER", "timeorigin": 2400000.5},
         "photcal": {
-            "flux": {
+            "pdcsap_flux_err": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
                 "zp_flux": (1.0, "1 / s"),
                 "mag_sys": "Vega",
-            }
+            },
+            "sap_flux_err": {
+                "filter": "TESS/TESS.Red",
+                "zp_mag": (20.44, "mag"),
+                "zp_flux": (1.0, "1 / s"),
+                "mag_sys": "Vega",
+            },
+            "sap_bkg_err": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},
+            "pdcsap_flux": {
+                "filter": "TESS/TESS.Red",
+                "zp_mag": (20.44, "mag"),
+                "zp_flux": (1.0, "1 / s"),
+                "mag_sys": "Vega",
+            },
+            "sap_flux": {
+                "filter": "TESS/TESS.Red",
+                "zp_mag": (20.44, "mag"),
+                "zp_flux": (1.0, "1 / s"),
+                "mag_sys": "Vega",
+            },
+            "sap_bkg": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},
         },
     },
     "ogle_ocvs, as issued": {
@@ -294,23 +309,8 @@ BASELINE: dict[str, dict] = {
         "columns": ["transit_time", "transit_mag", "mag_error", "transit_flux_over", "transit_n_obs"],
         "time_problems": [],
         "unit_findings": {},
-        "conversion_problems": {
-            "transit_mag": [],
-            "transit_flux_over": [
-                "Column " "'transit_flux_over' " "has " "no " "photometric " "calibration " "(photcal)."
-            ],
-        },
-        "suggested": {
-            "calibration": {
-                "transit_flux_over": {
-                    "magnitude_system": "Vega",
-                    "zp_mag": 0.0,
-                    "zp_flux": 1.0,
-                    "zp_mag_unit": "mag",
-                    "zp_flux_unit": None,
-                }
-            }
-        },
+        "conversion_problems": {"transit_mag": []},
+        "suggested": {},
         "timesys": {"timescale": "TCB", "refposition": "BARYCENTER", "timeorigin": 2455197.5},
         "photcal": {
             "transit_mag": {
@@ -345,24 +345,8 @@ BASELINE: dict[str, dict] = {
         ],
         "time_problems": [],
         "unit_findings": {},
-        "conversion_problems": {
-            "mag": [],
-            "flux": [],
-            "flux_over_error": [
-                "Column " "'flux_over_error' " "has no " "photometric " "calibration " "(photcal)."
-            ],
-        },
-        "suggested": {
-            "calibration": {
-                "flux_over_error": {
-                    "magnitude_system": "Vega",
-                    "zp_mag": 0.0,
-                    "zp_flux": 1.0,
-                    "zp_mag_unit": "mag",
-                    "zp_flux_unit": None,
-                }
-            }
-        },
+        "conversion_problems": {"mag": [], "flux": []},
+        "suggested": {},
         "timesys": {"timescale": "TCB", "refposition": "barycenter", "timeorigin": 2455197.5},
         "photcal": {
             "mag": {
