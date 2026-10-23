@@ -395,7 +395,7 @@ def _votable_xml(
             )
 
     ET.register_namespace("", _NS)
-    root = ET.Element(f"{{{_NS}}}VOTABLE", {"version": "1.3"})
+    root = ET.Element(f"{{{_NS}}}VOTABLE", {"version": "1.4"})
     resource = ET.SubElement(root, f"{{{_NS}}}RESOURCE")
     timesys = ET.SubElement(resource, f"{{{_NS}}}TIMESYS")
     timesys.set("ID", _TIMESYS_ID)

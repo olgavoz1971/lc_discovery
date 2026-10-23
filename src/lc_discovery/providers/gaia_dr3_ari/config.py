@@ -31,6 +31,11 @@ DATA_PRODUCT_TYPE = "timeseries"
 GAIA_ARI_ZERO_POINT_REFERENCE_MAGNITUDE = 0.0
 GAIA_ARI_ZP_FLUX = 1.0
 GAIA_ARI_ZP_MAG_UNIT = "mag"
+
+# Unit texts of the server that are not valid VOUnits 1.1, and what is issued instead.
+# VOUnits 1.1 has no electron: electrons per second are issued as "s**-1" (the same
+# convention as Gaia DR3 VEB and TESS). 1 Angstrom is exactly 0.1 nm, so the number stays.
+GAIA_ARI_UNIT_CORRECTIONS = {"e-/s": "s**-1", "Angstrom": "0.1nm"}
 GAIA_ARI_ZP_MAG_FOR_FLUX_BY_FILTER_IDENTIFIER = {
     "GAIADR3.G": 25.6874,
     "GAIADR3.Gbp": 25.3385,

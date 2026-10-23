@@ -123,7 +123,8 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
     is copied to a ``period`` parameter first. The magnitude photcal keeps the
     published Jy flux zero point and gains a magnitude zero point of 0 mag.
     Flux and its error use a separate photcal with flux zero point 1 in the
-    flux column's unit.
+    flux column's unit. Unit texts that are not valid VOUnits 1.1 (``e-/s``,
+    ``Angstrom``) are corrected first.
 
     Args:
         payload (bytes): Downloaded multi-table VOTable.
@@ -198,6 +199,7 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
         raise ValueError(
             f"{config.DISPLAY_NAME}: retrieved lightcurve is missing mag, flux, or flux_error."
         )
+    _correct_units(root)
     flux_unit = flux.get("unit")
     if not flux_unit:
         raise ValueError(f"{config.DISPLAY_NAME}: flux column has no unit.")
@@ -263,6 +265,23 @@ def enrich_votable(payload: bytes, *, table_id: int) -> bytes:
     ET.register_namespace("xsi", "http://www.w3.org/2001/XMLSchema-instance")
     ET.register_namespace("stc", "http://www.ivoa.net/xml/STC/v1.30")
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def _correct_units(root: ET.Element) -> None:
+    """Rewrites unit texts that are not valid VOUnits 1.1 on every FIELD and PARAM.
+
+    Only the units listed in ``config.GAIA_ARI_UNIT_CORRECTIONS`` are replaced;
+    any other unit text is left as the server wrote it.
+
+    Args:
+        root (xml.etree.ElementTree.Element): VOTable root, changed in place.
+    """
+    for element in root.iter():
+        if _local(element.tag) not in ("FIELD", "PARAM"):
+            continue
+        unit = element.get("unit")
+        if unit in config.GAIA_ARI_UNIT_CORRECTIONS:
+            element.set("unit", config.GAIA_ARI_UNIT_CORRECTIONS[unit])
 
 
 def _param_tag(group: ET.Element) -> str:

@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "volightcurve @ git+https://github.com/olgavoz1971/volightcurve.git"]
 tess = ["lightkurve"]
 asassn = ["skypatrol @ git+https://github.com/olgavoz1971/skypatrol.git@master"]
 scripts = ["astroquery"]

@@ -43,7 +43,9 @@ SPOC_INSTRUMENT_ZP_AUTHORS = frozenset({"SPOC", "TESS-SPOC"})
 TESS_ELECTRON_S_ZERO_POINT_REF_MAG = 20.44
 TESS_ELECTRON_S_ZERO_POINT_REF_MAG_UNCERTAINTY = 0.05
 TESS_ELECTRON_S_ZERO_POINT_FLUX = 1.0
-TESS_ELECTRON_S_ZERO_POINT_FLUX_UNIT = "electron s-1"
+# VOUnits 1.1 has no electron. The flux is electrons per second, issued as "s**-1" (the
+# convention of the Gaia DR3 VEB provider), the same text on the columns and on the zero point.
+TESS_ELECTRON_S_ZERO_POINT_FLUX_UNIT = "s**-1"
 
 TARS_AUTHOR = "TARS"
 # Authors whose HLSP files Lightkurve reads with the generic reader.
