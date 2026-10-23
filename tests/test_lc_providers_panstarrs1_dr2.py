@@ -313,3 +313,25 @@ def test_issued_title_is_object_label_and_filter():
     volc = load_issued(payload)
     assert volc.table.meta["name"] == "PS1 165243463579570976 i"
     assert "objID 165243463579570976" in volc.table.meta["description"]
+
+
+def test_issued_through_the_core_declares_the_whole_calibration_in_vounits():
+    """The core writes TIMESYS, one photcal group with wavelength in metres, and VOTable 1.4."""
+    detections = Table(
+        {
+            "obsTime": [55436.5, 55436.6],
+            "psfFlux": [3.5e-4, 3.6e-4],
+            "psfFluxErr": [3e-6, 3e-6],
+            "epochMean": [56000.0, 56000.0],
+        }
+    )
+    payload = votable_from_detections(
+        detections, obj_id=165213463504091232, filter_name="i", ra_deg=346.35, dec_deg=47.67
+    )
+    xml = payload.decode("utf-8")
+    assert 'version="1.4"' in xml
+    assert xml.count("<GROUP ") == 1
+    assert 'value="PAN-STARRS/PS1.i"' in xml
+    assert "Angstrom" not in xml
+    assert 'name="effectiveWavelength"' in xml
+    assert 'timeorigin="2400000.5"' in xml
