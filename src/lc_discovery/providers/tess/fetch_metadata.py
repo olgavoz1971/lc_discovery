@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import math
-import xml.etree.ElementTree as ET
 
 import numpy as np
 import astropy.units as u
+from astropy.table import Column, MaskedColumn, Table
+from volightcurve import PhotCal, PhotDM, PhotometryFilter, write_vo_lightcurve
 
 from lc_discovery.providers.tess import config
 from lc_discovery.providers.tess.columns import (
@@ -24,14 +26,6 @@ from lc_discovery.providers.tess.columns import (
 )
 
 logger = logging.getLogger(__name__)
-
-_NS = "http://www.ivoa.net/xml/VOTable/v1.3"
-_UT_FILTER = "photDM:PhotometryFilter.identifier"
-_UT_FLUX = "photDM:PhotCal.zeroPoint.flux.value"
-_UT_MAG = "photDM:PhotCal.zeroPoint.referenceMagnitude.value"
-_UT_SYS = "photDM:PhotCal.magnitudeSystem.type"
-_UT_WAVE = "photDM:PhotometryFilter.spectralLocation.value"
-_TIMESYS_ID = "ts"
 
 UCD_FLUX = "phot.flux"
 UCD_FLUX_ERROR = "stat.error;phot.flux"
@@ -108,28 +102,29 @@ def votable_from_lightcurve(
     )
 
 
-def _issue_unit(unit: str | None) -> str | None:
-    """Returns the unit string to write on an issued FIELD.
+def _issue_unit(unit: str | None):
+    """Returns the unit to write on an issued FIELD.
 
-    Electron s-1 family units are written in the configured spelling. Other
-    units are converted to VOUnit; a unit VOTable cannot express is not
-    written (the column is still issued).
+    Electron s-1 family units are written in the configured spelling. A unit that
+    Astropy does not know, or that VOUnits cannot express, is kept as the archive wrote it.
 
     Args:
         unit (str, optional): Unit read from the product.
 
     Returns:
-        str or None: Unit for the FIELD, or ``None``.
+        astropy.units.UnitBase or None: Unit for the FIELD, or ``None``.
     """
     if unit is None:
         return None
     if is_spoc_family_flux_unit(unit):
-        return config.TESS_ELECTRON_S_ZERO_POINT_FLUX_UNIT
+        return u.UnrecognizedUnit(config.TESS_ELECTRON_S_ZERO_POINT_FLUX_UNIT)
     try:
-        return u.Unit(unit).to_string("vounit")
-    except (ValueError, TypeError):
-        logger.debug("%s unit %r is not expressible in VOUnit.", config.DISPLAY_NAME, unit)
-        return None
+        parsed = u.Unit(unit)
+        parsed.to_string("vounit")
+        return parsed
+    except (ValueError, TypeError, u.UnitsError):
+        logger.warning("%s unit %r is kept as written.", config.DISPLAY_NAME, unit)
+        return u.UnrecognizedUnit(str(unit))
 
 
 def _issued_columns_known_author(lc, author: str, sector: int):
@@ -358,195 +353,6 @@ def _column_unit_str(lc, name: str) -> str | None:
     return str(unit)
 
 
-def _votable_xml(
-    lc,
-    *,
-    issued_columns,
-    photcal_groups,
-    time_mjd,
-    tic: int,
-    sector: int,
-    author: str,
-    exptime: float,
-    mast_pointer: dict[str, str] | None = None,
-) -> bytes:
-    """Serialises issued columns to a calibrated VOTable.
-
-    Args:
-        lc: Lightkurve light curve (headers and sky coordinates).
-        issued_columns: Column tuples ``(name, values, ucd, unit, group_id)``.
-        photcal_groups (dict): PhotCal GROUP payloads keyed by ID.
-        time_mjd: MJD time array.
-        tic (int): TESS Input Catalogue number.
-        sector (int): TESS sector.
-        author (str): Pipeline author.
-        exptime (float): Cadence in seconds.
-        mast_pointer (dict, optional): MAST FITS pointer written as TABLE PARAMs.
-
-    Returns:
-        bytes: VOTable XML.
-    """
-    n_rows = len(time_mjd)
-    for name, values, _ucd, _unit, _gid in issued_columns:
-        if len(values) != n_rows:
-            raise ValueError(
-                f"{config.DISPLAY_NAME}: column {name} length {len(values)} "
-                f"does not match time length {n_rows}."
-            )
-
-    ET.register_namespace("", _NS)
-    root = ET.Element(f"{{{_NS}}}VOTABLE", {"version": "1.4"})
-    resource = ET.SubElement(root, f"{{{_NS}}}RESOURCE")
-    timesys = ET.SubElement(resource, f"{{{_NS}}}TIMESYS")
-    timesys.set("ID", _TIMESYS_ID)
-    timesys.set("refposition", config.TESS_REFPOSITION)
-    timesys.set("timescale", config.TESS_TIMESCALE)
-    timesys.set("timeorigin", str(config.ISSUED_TIMEORIGIN))
-
-    fieldrefs_by_group: dict[str, list[str]] = {}
-    for name, _values, _ucd, _unit, group_id in issued_columns:
-        if group_id is None:
-            continue
-        fieldrefs_by_group.setdefault(group_id, []).append(name)
-
-    for group_id, payload in photcal_groups.items():
-        group = ET.SubElement(resource, f"{{{_NS}}}GROUP")
-        group.set("ID", group_id)
-        group.set("name", "photcal")
-        _param(
-            group,
-            "filterIdentifier",
-            payload["filter_identifier"],
-            utype=_UT_FILTER,
-            arraysize="*",
-        )
-        _param(
-            group,
-            "effectiveWavelength",
-            repr(float(payload["wavelength_m"])),
-            utype=_UT_WAVE,
-            unit="m",
-            datatype="double",
-        )
-        _param(group, "magnitudeSystem", payload["mag_sys"], utype=_UT_SYS, arraysize="*")
-        if payload.get("zp_flux") is not None:
-            _param(
-                group,
-                "zeroPointFlux",
-                repr(float(payload["zp_flux"])),
-                utype=_UT_FLUX,
-                unit=payload["zp_flux_unit"],
-                datatype="double",
-            )
-        if payload.get("zp_mag") is not None:
-            _param(
-                group,
-                "zeroPointReferenceMagnitude",
-                repr(float(payload["zp_mag"])),
-                utype=_UT_MAG,
-                unit="mag",
-                datatype="double",
-            )
-        for field_id in fieldrefs_by_group.get(group_id, []):
-            fieldref = ET.SubElement(group, f"{{{_NS}}}FIELDref")
-            fieldref.set("ref", field_id)
-
-    table = ET.SubElement(resource, f"{{{_NS}}}TABLE")
-    table.set("name", f"{config.format_tic_name(tic)} {author} sector {sector}")
-    description = ET.SubElement(table, f"{{{_NS}}}DESCRIPTION")
-    if is_known_author(author):
-        issue_note = (
-            "All registered flux and background columns that are present in the "
-            "product are issued."
-        )
-    else:
-        issue_note = (
-            "Author is not in the reviewed registry; every product column is "
-            "issued. Roles follow Lightkurve's FLUX_ORIGIN; see docs/providers/tess.md."
-        )
-    description.text = (
-        f"TESS archive light curve {config.format_tic_name(tic)}, "
-        f"sector {sector}, author {author}, cadence {exptime:g} s. {issue_note}"
-    )
-    _table_param(table, "facility_name", config.FACILITY_NAME)
-    _table_param(table, "instrument_name", config.INSTRUMENT_NAME)
-    _table_param(table, "tic", str(int(tic)), datatype="long")
-    _table_param(table, "sector", str(int(sector)), datatype="int")
-    _table_param(table, "author", str(author))
-    _table_param(table, "exptime", repr(float(exptime)), datatype="double", unit="s")
-    if mast_pointer is not None:
-        _table_param(table, "mast_obs_collection", mast_pointer["obs_collection"])
-        _table_param(table, "mast_obs_id", mast_pointer["obs_id"])
-        _table_param(table, "mast_product_filename", mast_pointer["product_filename"])
-    ra_val = _sky_coord_deg(getattr(lc, "ra", None))
-    dec_val = _sky_coord_deg(getattr(lc, "dec", None))
-    if ra_val is not None:
-        _table_param(table, "ra", repr(ra_val), datatype="double", ucd="pos.eq.ra")
-    if dec_val is not None:
-        _table_param(table, "dec", repr(dec_val), datatype="double", ucd="pos.eq.dec")
-    period, epoch_jd = _tars_ephemeris(lc, author)
-    if period is not None:
-        _table_param(
-            table,
-            "period",
-            repr(period),
-            datatype="double",
-            unit="d",
-            ucd="src.var;time.period",
-        )
-    if epoch_jd is not None:
-        _table_param(
-            table,
-            "epoch",
-            repr(epoch_jd),
-            datatype="double",
-            unit="d",
-            ucd="time.epoch",
-            ref=_TIMESYS_ID,
-        )
-
-    _field(
-        table,
-        "time",
-        "double",
-        ucd="time.epoch",
-        unit="d",
-        ref=_TIMESYS_ID,
-        field_id="time",
-    )
-    for name, values, ucd, unit, group_id in issued_columns:
-        datatype, arraysize = _votable_datatype(values)
-        _field(
-            table,
-            name,
-            datatype,
-            arraysize=arraysize,
-            ucd=ucd,
-            unit=unit,
-            ref=group_id,
-            field_id=name,
-        )
-
-    data = ET.SubElement(table, f"{{{_NS}}}DATA")
-    tabledata = ET.SubElement(data, f"{{{_NS}}}TABLEDATA")
-    for i in range(n_rows):
-        if not math.isfinite(float(time_mjd[i])):
-            continue
-        tr = ET.SubElement(tabledata, f"{{{_NS}}}TR")
-        _td(tr, repr(float(time_mjd[i])))
-        for _name, values, _ucd, _unit, _gid in issued_columns:
-            _td(tr, _cell_text(values[i]))
-
-    logger.info(
-        "%s issued TIC=%s sector=%s author=%s n_rows=%s columns=%s",
-        config.DISPLAY_NAME,
-        tic,
-        sector,
-        author,
-        n_rows,
-        ["time"] + [item[0] for item in issued_columns],
-    )
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
 
 
 def _photcal_id_for_flux(author: str, spec) -> str:
@@ -714,23 +520,6 @@ def _column_values(lc, name: str) -> np.ndarray | None:
     return np.asarray(raw)
 
 
-def _votable_datatype(values: np.ndarray) -> tuple[str, str | None]:
-    """Maps a numpy dtype to a VOTable datatype and arraysize.
-
-    Args:
-        values (numpy.ndarray): Column values.
-
-    Returns:
-        tuple[str, str or None]: ``(datatype, arraysize)``.
-    """
-    kind = values.dtype.kind
-    if kind == "f":
-        return "double", None
-    if kind in "iu":
-        return "long", None
-    if kind == "b":
-        return "boolean", None
-    return "char", "*"
 
 
 def _header_float(lc, key: str) -> float | None:
@@ -795,138 +584,184 @@ def _sky_coord_deg(value) -> float | None:
     return number
 
 
-def _cell_text(value) -> str:
-    """Formats one cell: finite number, integer, boolean, text, or empty.
+def _votable_xml(
+    lc,
+    *,
+    issued_columns,
+    photcal_groups,
+    time_mjd,
+    tic: int,
+    sector: int,
+    author: str,
+    exptime: float,
+    mast_pointer: dict[str, str] | None = None,
+) -> bytes:
+    """Writes the issued columns as a calibrated VOTable, through ``volightcurve``.
+
+    A row whose time is not finite is not issued. A non-finite number in any other
+    numeric column is issued as an empty (masked) cell.
 
     Args:
-        value: Array element.
+        lc: Lightkurve light curve (headers and sky coordinates).
+        issued_columns: Column tuples ``(name, values, ucd, unit, group_id)``.
+        photcal_groups (dict): PhotCal payloads keyed by group ID.
+        time_mjd: MJD time array.
+        tic (int): TESS Input Catalogue number.
+        sector (int): TESS sector.
+        author (str): Pipeline author.
+        exptime (float): Cadence in seconds.
+        mast_pointer (dict, optional): MAST FITS pointer written as TABLE PARAMs.
 
     Returns:
-        str: Cell text; empty for non-finite numbers.
+        bytes: VOTable XML.
+
+    Raises:
+        ValueError: When a column length differs from the time length.
     """
-    if isinstance(value, (np.bool_, bool)):
-        return "1" if value else "0"
-    if isinstance(value, (np.integer, int)):
-        return str(int(value))
-    if isinstance(value, (str, bytes, np.str_, np.bytes_)):
-        return value.decode("utf-8") if isinstance(value, bytes) else str(value)
-    try:
-        number = float(value)
-    except (TypeError, ValueError):
-        return str(value)
-    return repr(number) if math.isfinite(number) else ""
+    n_rows = len(time_mjd)
+    for name, values, _ucd, _unit, _gid in issued_columns:
+        if len(values) != n_rows:
+            raise ValueError(
+                f"{config.DISPLAY_NAME}: column {name} length {len(values)} "
+                f"does not match time length {n_rows}."
+            )
+    keep = np.isfinite(time_mjd)
+    out = Table()
+    out["time"] = Column(np.asarray(time_mjd, dtype=float)[keep], unit="d")
+    out["time"].info.meta = {"ucd": "time.epoch"}
+    for name, values, ucd, unit, _group_id in issued_columns:
+        out[name] = _issued_column(values[keep], unit)
+        if ucd:
+            out[name].info.meta = {"ucd": ucd}
+
+    photdm_by_group = {
+        group_id: _photdm(payload) for group_id, payload in photcal_groups.items()
+    }
+    photdms = {
+        name: photdm_by_group[group_id]
+        for name, _values, ucd, _unit, group_id in issued_columns
+        if group_id is not None and ucd and "phot." in ucd
+    }
+
+    description = (
+        f"TESS archive light curve {config.format_tic_name(tic)}, "
+        f"sector {sector}, author {author}, cadence {exptime:g} s. "
+        + (
+            "All registered flux and background columns that are present in the "
+            "product are issued."
+            if is_known_author(author)
+            else "Author is not in the reviewed registry; every product column is "
+            "issued. Roles follow Lightkurve's FLUX_ORIGIN; see docs/providers/tess.md."
+        )
+    )
+    table_params = [
+        {"name": "tic", "value": int(tic), "datatype": "long"},
+        {"name": "sector", "value": int(sector), "datatype": "int"},
+        {"name": "author", "value": str(author)},
+        {"name": "exptime", "value": float(exptime), "datatype": "double", "unit": "s"},
+    ]
+    if mast_pointer is not None:
+        table_params.extend(
+            {"name": f"mast_{key}", "value": mast_pointer[key]}
+            for key in ("obs_collection", "obs_id", "product_filename")
+        )
+    period, epoch_jd = _tars_ephemeris(lc, author)
+    if period is not None:
+        table_params.append(
+            {
+                "name": "period",
+                "value": period,
+                "datatype": "double",
+                "unit": "d",
+                "ucd": "src.var;time.period",
+            }
+        )
+    if epoch_jd is not None:
+        table_params.append(
+            {
+                "name": "epoch",
+                "value": epoch_jd,
+                "datatype": "double",
+                "unit": "d",
+                "ucd": "time.epoch",
+                "ref": "ts",
+            }
+        )
+
+    buffer = io.BytesIO()
+    write_vo_lightcurve(
+        buffer,
+        out,
+        f"{config.format_tic_name(tic)} {author} sector {sector}",
+        refposition=config.TESS_REFPOSITION,
+        timescale=config.TESS_TIMESCALE,
+        timeorigin=config.ISSUED_TIMEORIGIN,
+        table_description=description,
+        ra=_sky_coord_deg(getattr(lc, "ra", None)),
+        dec=_sky_coord_deg(getattr(lc, "dec", None)),
+        binary=False,
+        facility_name=config.FACILITY_NAME,
+        instrument_name=config.INSTRUMENT_NAME,
+        photdms=photdms,
+        table_params=table_params,
+    )
+    logger.info(
+        "%s issued TIC=%s sector=%s author=%s n_rows=%s columns=%s",
+        config.DISPLAY_NAME,
+        tic,
+        sector,
+        author,
+        int(keep.sum()),
+        list(out.colnames),
+    )
+    return buffer.getvalue()
 
 
-def _td(row: ET.Element, text: str) -> None:
-    """Appends one TABLEDATA cell.
+def _photdm(payload: dict) -> PhotDM:
+    """Builds the ``PhotDM`` of one PhotCal payload.
 
     Args:
-        row (xml.etree.ElementTree.Element): ``TR`` element.
-        text (str): Cell text.
+        payload (dict): Output of the ``_photcal_payload`` family.
+
+    Returns:
+        volightcurve.PhotDM: Calibration; a zero point is declared only when given.
     """
-    cell = ET.SubElement(row, f"{{{_NS}}}TD")
-    cell.text = text
+    zp_flux = payload.get("zp_flux")
+    zp_mag = payload.get("zp_mag")
+    return PhotDM(
+        photcal=PhotCal(
+            zp_flux=zp_flux,
+            zp_flux_unit=payload.get("zp_flux_unit") if zp_flux is not None else None,
+            zp_mag=zp_mag,
+            zp_mag_unit="mag" if zp_mag is not None else None,
+            mag_sys=payload["mag_sys"],
+        ),
+        photometry_filter=PhotometryFilter(
+            filter_id=payload["filter_identifier"],
+            spectral_location=float(payload["wavelength_m"]) * u.m,
+        ),
+    )
 
 
-def _table_param(
-    table: ET.Element,
-    name: str,
-    value: str,
-    *,
-    datatype: str = "char",
-    unit: str | None = None,
-    ucd: str | None = None,
-    ref: str | None = None,
-) -> None:
-    """Appends one TABLE PARAM.
+def _issued_column(values: np.ndarray, unit) -> Column:
+    """Builds one table column that keeps the archive datatype.
+
+    Floats stay double and a non-finite value is masked; integers stay long;
+    booleans stay boolean; anything else is text.
 
     Args:
-        table (xml.etree.ElementTree.Element): TABLE element.
-        name (str): PARAM name.
-        value (str): PARAM value.
-        datatype (str): VOTable datatype.
-        unit (str, optional): Unit.
-        ucd (str, optional): UCD.
-        ref (str, optional): TIMESYS reference.
+        values (numpy.ndarray): Column values.
+        unit (astropy.units.UnitBase or None): Column unit.
+
+    Returns:
+        astropy.table.Column: Plain or masked column.
     """
-    param = ET.SubElement(table, f"{{{_NS}}}PARAM")
-    param.set("name", name)
-    param.set("datatype", datatype)
-    param.set("value", value)
-    if datatype == "char":
-        param.set("arraysize", "*")
-    if unit:
-        param.set("unit", unit)
-    if ucd:
-        param.set("ucd", ucd)
-    if ref:
-        param.set("ref", ref)
-
-
-def _param(
-    parent: ET.Element,
-    name: str,
-    value: str,
-    *,
-    utype: str,
-    unit: str | None = None,
-    datatype: str = "char",
-    arraysize: str | None = None,
-) -> None:
-    """Appends one photcal PARAM.
-
-    Args:
-        parent (xml.etree.ElementTree.Element): GROUP element.
-        name (str): PARAM name.
-        value (str): PARAM value.
-        utype (str): PhotDM utype.
-        unit (str, optional): Unit.
-        datatype (str): VOTable datatype.
-        arraysize (str, optional): Character arraysize.
-    """
-    param = ET.SubElement(parent, f"{{{_NS}}}PARAM")
-    param.set("name", name)
-    param.set("datatype", datatype)
-    param.set("value", value)
-    param.set("utype", utype)
-    if unit:
-        param.set("unit", unit)
-    if arraysize:
-        param.set("arraysize", arraysize)
-
-
-def _field(
-    table: ET.Element,
-    name: str,
-    datatype: str,
-    *,
-    ucd: str | None = None,
-    unit: str | None = None,
-    ref: str | None = None,
-    field_id: str | None = None,
-    arraysize: str | None = None,
-) -> None:
-    """Appends one FIELD.
-
-    Args:
-        table (xml.etree.ElementTree.Element): TABLE element.
-        name (str): Column name.
-        datatype (str): VOTable datatype.
-        ucd (str, optional): Column UCD.
-        unit (str, optional): Unit.
-        ref (str, optional): TIMESYS or photcal reference.
-        field_id (str, optional): FIELD ID.
-    """
-    field = ET.SubElement(table, f"{{{_NS}}}FIELD")
-    field.set("name", name)
-    field.set("datatype", datatype)
-    if arraysize:
-        field.set("arraysize", arraysize)
-    if ucd:
-        field.set("ucd", ucd)
-    if unit:
-        field.set("unit", unit)
-    if ref:
-        field.set("ref", ref)
-    if field_id:
-        field.set("ID", field_id)
+    kind = values.dtype.kind
+    if kind == "f":
+        data = np.asarray(values, dtype=float)
+        return MaskedColumn(data, mask=~np.isfinite(data), unit=unit)
+    if kind in "iu":
+        return Column(np.asarray(values, dtype=np.int64), unit=unit)
+    if kind == "b":
+        return Column(np.asarray(values, dtype=bool), unit=unit)
+    return Column(np.asarray([str(v) for v in values]), unit=unit)

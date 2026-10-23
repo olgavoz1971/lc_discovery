@@ -45,6 +45,8 @@ TESS_ELECTRON_S_ZERO_POINT_REF_MAG_UNCERTAINTY = 0.05
 TESS_ELECTRON_S_ZERO_POINT_FLUX = 1.0
 # VOUnits 1.1 has no electron, and "s-1" is not a valid VOUnits spelling. The flux is
 # electrons per second, issued as "count/s": the same text on the columns and on the zero point.
+# Old Astropy (before 8.0, which needs Python 3.11) writes units in CDS ("ct.s-1"); the core
+# works around it (volightcurve.lightcurve._force_vounits_on_wire).
 TESS_ELECTRON_S_ZERO_POINT_FLUX_UNIT = "count/s"
 
 TARS_AUTHOR = "TARS"

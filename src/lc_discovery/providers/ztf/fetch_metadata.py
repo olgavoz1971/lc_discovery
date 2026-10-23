@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import io
 import logging
-import xml.etree.ElementTree as ET
+import warnings
 
 import numpy as np
 import pandas as pd
+from astropy import units as u
+from astropy.table import MaskedColumn, Table
+from volightcurve import PhotCal, PhotDM, PhotometryFilter, write_vo_lightcurve
 
 from lc_discovery.discovery_fetch_context import (
     DiscoveryFetchContext,
@@ -17,13 +21,6 @@ from lc_discovery.providers.ztf import config
 from lc_discovery.epoch import JD_TO_MJD
 
 logger = logging.getLogger(__name__)
-
-_NS = "http://www.ivoa.net/xml/VOTable/v1.3"
-_UT_FILTER = "photDM:PhotometryFilter.identifier"
-_UT_FLUX = "photDM:PhotCal.zeroPoint.flux.value"
-_UT_MAG = "photDM:PhotCal.zeroPoint.referenceMagnitude.value"
-_UT_SYS = "photDM:PhotCal.magnitudeSystem.type"
-_UT_WAVE = "photDM:PhotometryFilter.spectralLocation.value"
 
 # Source column, issued name. UCD, unit, datatype, and description come from
 # the IRSA FIELD of the source column when the download carried them.
@@ -42,6 +39,20 @@ _COLUMNS = (
     ("limitmag", "limitmag"),
 )
 _INTEGRAL_DATATYPES = {"long", "int", "short", "unsignedByte", "unsignedShort", "unsignedInt"}
+# VOTable datatype of the IRSA FIELD to the numpy type of the issued column.
+_NUMPY_DTYPES = {
+    "double": np.float64,
+    "float": np.float32,
+    "long": np.int64,
+    "int": np.int32,
+    "short": np.int16,
+    "unsignedByte": np.uint8,
+    "unsignedShort": np.uint16,
+    "unsignedInt": np.uint32,
+}
+# Text and logical types: kept as the archive declares them.
+_TEXT_DATATYPES = {"char", "unicodeChar"}
+_BOOLEAN_DATATYPE = "boolean"
 
 
 def votable_from_epochs(
@@ -51,7 +62,7 @@ def votable_from_epochs(
     ra_deg: float | None,
     dec_deg: float | None,
 ) -> bytes:
-    """Writes one ZTF light curve as a calibrated VOTable.
+    """Writes one ZTF light curve as a calibrated VOTable, through ``volightcurve``.
 
     Time is ``hjd`` when that column exists, otherwise ``hmjd``. A row is
     removed when time or magnitude is missing. A missing magnitude error stays
@@ -104,58 +115,49 @@ def votable_from_epochs(
     if not kept:
         raise ValueError(f"{config.DISPLAY_NAME}: no epochs with time and magnitude.")
 
-    output_columns = [
-        item for item in _COLUMNS if item[0] == time_source or item[0] not in ("hjd", "hmjd")
-    ]
-    wavelength_m = band.effective_wavelength_angstrom * 1e-10
-    ET.register_namespace("", _NS)
-    root = ET.Element(f"{{{_NS}}}VOTABLE", {"version": "1.3"})
-    resource = ET.SubElement(root, f"{{{_NS}}}RESOURCE")
-    timesys = ET.SubElement(resource, f"{{{_NS}}}TIMESYS")
-    timesys.set("ID", "ts")
-    timesys.set("refposition", config.ZTF_REFPOSITION)
-    timesys.set("timescale", config.ZTF_TIMESCALE)
-    timesys.set("timeorigin", str(timeorigin))
-    group = ET.SubElement(resource, f"{{{_NS}}}GROUP")
-    group.set("ID", "photcal")
-    group.set("name", "photcal")
-    _param(group, "filterIdentifier", band.filter_identifier, utype=_UT_FILTER, arraysize="*")
-    _param(group, "zeroPointFlux", repr(float(band.zp_flux_jy)), utype=_UT_FLUX, unit="Jy", datatype="double")
-    _param(group, "magnitudeSystem", band.mag_sys, utype=_UT_SYS, arraysize="*")
-    _param(group, "effectiveWavelength", repr(float(wavelength_m)), utype=_UT_WAVE, unit="m", datatype="double")
-    _param(group, "zeroPointReferenceMagnitude", "0.0", utype=_UT_MAG, unit="mag", datatype="double")
-    for field_id in ("mag", "mag_err"):
-        fieldref = ET.SubElement(group, f"{{{_NS}}}FIELDref")
-        fieldref.set("ref", field_id)
-
-    oid_text = _cell(frame["oid"].iloc[0], integral=True)
-    table = ET.SubElement(resource, f"{{{_NS}}}TABLE")
-    table.set("name", f"{config.format_ztf_oid_name(oid_text)} {band.filter_name}")
-    if ra_deg is not None:
-        _table_param(table, "ra", repr(float(ra_deg)), datatype="double", ucd="pos.eq.ra")
-    if dec_deg is not None:
-        _table_param(table, "dec", repr(float(dec_deg)), datatype="double", ucd="pos.eq.dec")
-    for source, out_name in output_columns:
+    output_columns = [item for item in _COLUMNS if item[0] == time_source or item[0] not in ("hjd", "hmjd")]
+    out = Table()
+    for position, (source, out_name) in enumerate(output_columns):
         remote = fields.get(source) or {}
-        field_id = out_name if out_name in ("mag", "mag_err") or source == time_source else None
-        ref = "ts" if source == time_source else ("photcal" if out_name in ("mag", "mag_err") else None)
-        _field(
-            table,
-            out_name,
-            str(remote.get("datatype") or "double"),
-            ucd=_issued_ucd(out_name, remote.get("ucd")),
-            unit=remote.get("unit") or None,
-            ref=ref,
-            field_id=field_id or out_name,
-            description=remote.get("description") or None,
-        )
-    data = ET.SubElement(table, f"{{{_NS}}}DATA")
-    tabledata = ET.SubElement(data, f"{{{_NS}}}TABLEDATA")
-    for values in kept:
-        tr = ET.SubElement(tabledata, f"{{{_NS}}}TR")
-        for text in values:
-            cell = ET.SubElement(tr, f"{{{_NS}}}TD")
-            cell.text = text
+        datatype = str(remote.get("datatype") or "double")
+        texts = [values[position] for values in kept]
+        column = _column_from_cells(out_name, texts, datatype)
+        if remote.get("unit"):
+            column.unit = _vounit(out_name, remote["unit"])
+        if remote.get("description"):
+            column.description = remote["description"]
+        ucd = _issued_ucd(out_name, remote.get("ucd"))
+        column.info.meta = {"ucd": ucd} if ucd else {}
+        out[out_name] = column
+
+    photometry_filter = PhotometryFilter(
+        filter_id=band.filter_identifier,
+        spectral_location=(band.effective_wavelength_angstrom * u.AA).to(u.m),
+    )
+    calibration = PhotDM(
+        photcal=PhotCal(
+            zp_flux=band.zp_flux_jy,
+            zp_flux_unit="Jy",
+            zp_mag=0.0,
+            zp_mag_unit="mag",
+            mag_sys=band.mag_sys,
+        ),
+        photometry_filter=photometry_filter,
+    )
+    oid_text = _cell(frame["oid"].iloc[0], integral=True)
+    buffer = io.BytesIO()
+    write_vo_lightcurve(
+        buffer,
+        out,
+        f"{config.format_ztf_oid_name(oid_text)} {band.filter_name}",
+        refposition=config.ZTF_REFPOSITION,
+        timescale=config.ZTF_TIMESCALE,
+        timeorigin=timeorigin,
+        ra=None if ra_deg is None else float(ra_deg),
+        dec=None if dec_deg is None else float(dec_deg),
+        binary=False,
+        photdms={"mag": calibration, "mag_err": calibration},
+    )
     logger.info(
         "%s issued filter=%s n_rows=%s time=%s",
         config.DISPLAY_NAME,
@@ -163,7 +165,69 @@ def votable_from_epochs(
         len(kept),
         time_source,
     )
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    return buffer.getvalue()
+
+
+def _column_from_cells(name: str, texts: list[str], datatype: str) -> MaskedColumn:
+    """Builds one typed column from cell texts; an empty numeric or logical cell is masked.
+
+    Args:
+        name (str): Issued column name.
+        texts (list[str]): Cell texts, ``""`` for a missing value.
+        datatype (str): VOTable datatype of the source FIELD.
+
+    Returns:
+        astropy.table.MaskedColumn: Column of the type that matches ``datatype``.
+
+    Raises:
+        ValueError: When the datatype is none of the numeric, text or boolean VOTable types
+            (the complex types and ``bit`` are not handled).
+    """
+    if datatype in _TEXT_DATATYPES:
+        return MaskedColumn(np.array(texts, dtype=str), name=name, mask=[False] * len(texts))
+    mask = [text == "" for text in texts]
+    if datatype == _BOOLEAN_DATATYPE:
+        truth = {"1": True, "t": True, "true": True, "0": False, "f": False, "false": False}
+        try:
+            filled = [truth[text.strip().lower()] if text != "" else False for text in texts]
+        except KeyError as exc:
+            raise ValueError(f"{config.DISPLAY_NAME}: column {name!r} has a boolean cell {exc}.") from exc
+        return MaskedColumn(np.array(filled, dtype=bool), name=name, mask=mask)
+    if datatype not in _NUMPY_DTYPES:
+        raise ValueError(f"{config.DISPLAY_NAME}: column {name!r} has unsupported datatype {datatype!r}.")
+    # Base 0: IRSA writes some integral cells in hexadecimal (``0x10``), which VOTable allows.
+    parse = (lambda text: int(text, 0)) if datatype in _INTEGRAL_DATATYPES else float
+    filled = [parse(text) if text != "" else 0 for text in texts]
+    values = np.array(filled).astype(_NUMPY_DTYPES[datatype])
+    return MaskedColumn(values, name=name, mask=mask)
+
+
+def _vounit(name: str, text: str) -> u.UnitBase:
+    """Returns the unit of an IRSA FIELD, keeping the archive's text.
+
+    A text that Astropy parses as VOUnits without a warning becomes a regular unit (written in
+    its VOUnits form). Any other text, including a unit VOUnits does not know or has deprecated,
+    is kept as an unrecognised unit and is written exactly as the archive sent it.
+
+    Args:
+        name (str): Issued column name, for the log message.
+        text (str): Unit text as the archive wrote it.
+
+    Returns:
+        astropy.units.UnitBase: The unit, possibly an ``UnrecognizedUnit`` that carries ``text``.
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        try:
+            unit = u.Unit(text, format="vounit")
+        except ValueError:
+            unit = None
+    if unit is None or any(issubclass(item.category, u.UnitsWarning) for item in caught):
+        logger.warning(
+            "%s column %r keeps the archive unit %r (not plain VOUnits).", config.DISPLAY_NAME, name, text
+        )
+        return u.UnrecognizedUnit(text)
+    return unit
 
 
 def _issued_ucd(column: str, ucd: str | None) -> str | None:
@@ -213,78 +277,6 @@ def _cell(value, *, integral: bool = False) -> str:
             return str(int(number))
         return repr(number)
     return str(value).strip()
-
-
-def _table_param(table, name, value, *, datatype="char", ucd=None) -> None:
-    """Appends one TABLE PARAM.
-
-    Args:
-        table: TABLE element.
-        name (str): PARAM name.
-        value (str): PARAM value.
-        datatype (str): VOTable datatype.
-        ucd (str, optional): UCD.
-    """
-    param = ET.SubElement(table, f"{{{_NS}}}PARAM")
-    param.set("name", name)
-    param.set("datatype", datatype)
-    param.set("value", value)
-    if datatype == "char":
-        param.set("arraysize", "*")
-    if ucd:
-        param.set("ucd", ucd)
-
-
-def _param(parent, name, value, *, utype, unit=None, datatype="char", arraysize=None) -> None:
-    """Appends one photcal PARAM.
-
-    Args:
-        parent: GROUP element.
-        name (str): PARAM name.
-        value (str): PARAM value.
-        utype (str): PhotDM utype.
-        unit (str, optional): Unit.
-        datatype (str): VOTable datatype.
-        arraysize (str, optional): Character arraysize.
-    """
-    param = ET.SubElement(parent, f"{{{_NS}}}PARAM")
-    param.set("name", name)
-    param.set("datatype", datatype)
-    param.set("value", value)
-    param.set("utype", utype)
-    if unit:
-        param.set("unit", unit)
-    if arraysize:
-        param.set("arraysize", arraysize)
-
-
-def _field(table, name, datatype, *, ucd, unit=None, ref=None, field_id=None, description=None) -> None:
-    """Appends one FIELD and its description.
-
-    Args:
-        table: TABLE element.
-        name (str): Column name.
-        datatype (str): VOTable datatype.
-        ucd (str): Column UCD.
-        unit (str, optional): Unit.
-        ref (str, optional): TIMESYS or photcal reference.
-        field_id (str, optional): FIELD ID.
-        description (str, optional): IRSA field description.
-    """
-    field = ET.SubElement(table, f"{{{_NS}}}FIELD")
-    field.set("name", name)
-    field.set("datatype", datatype)
-    if ucd:
-        field.set("ucd", ucd)
-    if unit:
-        field.set("unit", unit)
-    if ref:
-        field.set("ref", ref)
-    if field_id:
-        field.set("ID", field_id)
-    if description:
-        desc = ET.SubElement(field, f"{{{_NS}}}DESCRIPTION")
-        desc.text = description
 
 
 def resolve_lookup_name_for_fetch(

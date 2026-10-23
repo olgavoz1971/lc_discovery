@@ -7,7 +7,7 @@ update the baseline on purpose. Nothing here changes a writer, and nothing uses 
 
 Cases (all ten providers; recorded products live in ``tests/data``):
 
-* Recorded as issued by Discovery: ``ztf`` (OID 1772216100034775, ZTF r), ``ogle_ocvs``
+* Recorded as issued by Discovery: ``ztf`` (OID 1772316100027697, ZTF i), ``ogle_ocvs``
   (OGLE-LMC-RRLYR-13820).
 * Recorded as the TAP service sends it, then passed through ``enrich_votable``: ``gaia_dr3_veb``,
   ``upjs_ts``, ``personal_ts`` (V band); ``gaia_dr3_ari`` and ``gaia_dr3_aip`` from the bundled samples.
@@ -100,7 +100,7 @@ def _veb_raw() -> bytes:
 
 def _ztf_issued() -> bytes:
     """Returns the recorded ZTF product as Discovery issued it."""
-    return (_DATA / "ztf_oid_1772216100034775_zr_orig.xml").read_bytes()
+    return (_DATA / "ztf_oid_1772316100027697_zi_orig.xml").read_bytes()
 
 
 def _ogle_issued() -> bytes:
@@ -223,13 +223,13 @@ BASELINE: dict[str, dict] = {
         "timesys": {"timescale": "UTC", "refposition": "HELIOCENTER", "timeorigin": 0.0},
         "photcal": {
             "mag_err": {
-                "filter": "Palomar/ZTF.r",
+                "filter": "Palomar/ZTF.i",
                 "zp_mag": (0.0, "mag"),
                 "zp_flux": (3631.0, "Jy"),
                 "mag_sys": "AB",
             },
             "mag": {
-                "filter": "Palomar/ZTF.r",
+                "filter": "Palomar/ZTF.i",
                 "zp_mag": (0.0, "mag"),
                 "zp_flux": (3631.0, "Jy"),
                 "mag_sys": "AB",
@@ -265,7 +265,6 @@ BASELINE: dict[str, dict] = {
                 "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
-            "sap_bkg_err": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},
             "pdcsap_flux": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
@@ -278,7 +277,6 @@ BASELINE: dict[str, dict] = {
                 "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
-            "sap_bkg": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},
         },
     },
     "ogle_ocvs, as issued": {

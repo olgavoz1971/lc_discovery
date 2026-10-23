@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import re
+
 import numpy as np
 import pytest
 from astropy.table import Table
@@ -223,7 +225,8 @@ def test_spoc_issued_keeps_sap_and_pdcsap():
     assert issued.photdms["pdcsap_flux"].photcal.zp_mag.value == pytest.approx(20.44)
     assert issued.photdms["sap_flux"].photcal.zp_mag.value == pytest.approx(20.44)
     assert issued.photdms["pdcsap_flux"].photcal.zp_flux.value == pytest.approx(1.0)
-    assert issued.photdms["sap_bkg"].photcal.zp_mag is None
+    # A background column carries no photometric calibration of its own.
+    assert "sap_bkg" not in issued.photdms
     assert issued["time"][0] == pytest.approx(config.btjd_to_mjd(1400.0))
     xml = payload.decode("utf-8")
     assert 'ID="ts"' in xml
@@ -314,13 +317,15 @@ def test_unknown_author_roles_from_flux_origin():
     for name in ("flux", "flux_err", "psf_flux", "sap_bkg", "quality"):
         assert name in issued.colnames
     assert issued.photdms["psf_flux"].photcal.zp_mag.value == pytest.approx(20.44)
-    assert issued.photdms["sap_bkg"].photcal.zp_mag is None
+    assert "sap_bkg" not in issued.photdms
     xml = payload.decode("utf-8")
     assert 'ucd="instr.background"' in xml
     assert "phot.flux;instr.background" not in xml
-    assert 'name="flag" datatype="char" arraysize="*"' in xml
-    assert 'name="quality" datatype="long"' in xml
-    assert "Author is not in the reviewed registry" in xml
+    flag_tag = re.search(r'<FIELD [^>]*name="flag"[^>]*>', xml).group(0)
+    assert 'datatype="unicodeChar"' in flag_tag
+    quality_tag = re.search(r'<FIELD [^>]*name="quality"[^>]*>', xml).group(0)
+    assert 'datatype="long"' in quality_tag
+    assert "Author is not in the reviewed registry" in " ".join(xml.split())
 
 
 def test_unknown_author_without_flux_origin_issues_everything_without_roles():

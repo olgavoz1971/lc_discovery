@@ -168,6 +168,23 @@ def test_fetch_lightcurve_builds_mag_native_volc(monkeypatch, provider):
             "limitmag": [20.5, 20.4],
         }
     )
+    epochs.attrs["irsa_fields"] = {
+        "hjd": {"datatype": "double", "ucd": "time.epoch", "unit": "d"},
+        "mag": {"datatype": "float", "ucd": "phot.mag;em.opt", "unit": "mag"},
+        "magerr": {"datatype": "float", "ucd": "stat.error;phot.mag;em.opt", "unit": "mag"},
+        "oid": {"datatype": "long", "ucd": "meta.id"},
+        "catflags": {"datatype": "int", "ucd": "meta.code"},
+        "chi": {"datatype": "float", "ucd": "stat.parameter"},
+        "sharp": {"datatype": "float", "ucd": "stat.parameter"},
+        "field": {"datatype": "int", "ucd": "meta.id;obs.field"},
+        "ccdid": {"datatype": "unsignedByte", "ucd": "meta.id;instr.det"},
+        "qid": {"datatype": "unsignedByte", "ucd": "meta.id"},
+        "limitmag": {
+            "datatype": "float",
+            "ucd": "phot.mag;em.opt;stat.max;instr.sensitivity;obs.exposure",
+            "unit": "mag",
+        },
+    }
     monkeypatch.setattr(
         "lc_discovery.providers.ztf.provider.query_objects_by_oid",
         lambda oid_arg: meta,
@@ -198,3 +215,83 @@ def test_limitmag_is_issued_without_the_photometric_words():
     assert _issued_ucd("limitmag", server) == "em.opt;stat.max;instr.sensitivity;obs.exposure"
     assert _issued_ucd("mag", "phot.mag;em.opt") == "phot.mag;em.opt"
     assert _issued_ucd("limitmag", None) is None
+
+
+def test_issued_through_the_core_keeps_hex_cells_and_empty_errors():
+    """Hexadecimal integral cells keep their value; a missing magnitude error stays empty."""
+    from lc_discovery.providers.ztf.fetch_metadata import votable_from_epochs
+
+    frame = pd.DataFrame(
+        {
+            "oid": [123456789012, 123456789012],
+            "hjd": [2458000.1, 2458001.2],
+            "mag": [14.1, 14.2],
+            "magerr": [0.05, float("nan")],
+            "catflags": [0, 0],
+            "chi": [1.1, 1.2],
+            "sharp": [0.01, 0.02],
+            "field": [596, 596],
+            "ccdid": ["0x10", "0x10"],
+            "qid": ["0x1", "0x1"],
+            "limitmag": [20.5, 20.4],
+        }
+    )
+    frame.attrs["irsa_fields"] = {
+        "hjd": {"datatype": "double", "ucd": "time.epoch", "unit": "d"},
+        "mag": {"datatype": "float", "ucd": "phot.mag;em.opt", "unit": "mag"},
+        "magerr": {"datatype": "float", "ucd": "stat.error;phot.mag;em.opt", "unit": "mag"},
+        "oid": {"datatype": "long", "ucd": "meta.id"},
+        "catflags": {"datatype": "int", "ucd": "meta.code"},
+        "chi": {"datatype": "float", "ucd": "stat.parameter"},
+        "sharp": {"datatype": "float", "ucd": "stat.parameter"},
+        "field": {"datatype": "int", "ucd": "meta.id;obs.field"},
+        "ccdid": {"datatype": "unsignedByte", "ucd": "meta.id;instr.det"},
+        "qid": {"datatype": "unsignedByte", "ucd": "meta.id"},
+        "limitmag": {"datatype": "float", "ucd": "phot.mag;stat.max", "unit": "mag"},
+    }
+    payload = votable_from_epochs(frame, filtercode="zr", ra_deg=10.0, dec_deg=20.0)
+    xml = payload.decode("utf-8")
+    assert xml.count("<GROUP ") == 1
+    from issued import load_issued
+
+    volc = load_issued(payload)
+    assert list(volc.table["ccdid"]) == [16, 16]
+    assert list(volc.table["qid"]) == [1, 1]
+    assert bool(volc.table["mag_err"].mask[1])
+
+
+def test_issued_keeps_a_unit_text_that_is_not_vounits_and_text_columns():
+    """An archive unit that is not VOUnits is written as sent; a char column keeps its text."""
+    from lc_discovery.providers.ztf.fetch_metadata import votable_from_epochs
+
+    frame = pd.DataFrame(
+        {
+            "oid": [123456789012],
+            "hjd": [2458000.1],
+            "mag": [14.1],
+            "magerr": [0.05],
+            "catflags": [0],
+            "chi": [1.1],
+            "sharp": [0.01],
+            "field": [596],
+            "ccdid": [1],
+            "qid": [2],
+            "limitmag": [20.5],
+        }
+    )
+    fields = {
+        "hjd": {"datatype": "double", "ucd": "time.epoch", "unit": "d"},
+        "mag": {"datatype": "float", "ucd": "phot.mag;em.opt", "unit": "mag"},
+        "magerr": {"datatype": "float", "ucd": "stat.error;phot.mag;em.opt", "unit": "mag"},
+        "oid": {"datatype": "long", "ucd": "meta.id"},
+        "catflags": {"datatype": "int", "ucd": "meta.code"},
+        "chi": {"datatype": "float", "ucd": "stat.parameter", "unit": "foo bar/zap"},
+        "sharp": {"datatype": "float", "ucd": "stat.parameter"},
+        "field": {"datatype": "int", "ucd": "meta.id;obs.field"},
+        "ccdid": {"datatype": "unsignedByte", "ucd": "meta.id;instr.det"},
+        "qid": {"datatype": "unsignedByte", "ucd": "meta.id"},
+        "limitmag": {"datatype": "float", "ucd": "phot.mag;stat.max", "unit": "mag"},
+    }
+    frame.attrs["irsa_fields"] = fields
+    xml = votable_from_epochs(frame, filtercode="zr", ra_deg=None, dec_deg=None).decode("utf-8")
+    assert 'unit="foo bar/zap"' in xml

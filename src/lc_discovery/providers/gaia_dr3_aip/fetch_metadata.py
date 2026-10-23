@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
+import io
 import logging
 import xml.etree.ElementTree as ET
+
+import numpy as np
+from astropy import units as u
+from astropy.table import MaskedColumn, Table
+from volightcurve import PhotCal, PhotDM, PhotometryFilter, write_vo_lightcurve
 
 from lc_discovery.providers.gaia_dr3_aip import config
 from lc_discovery.shared.gaia_epoch_mag_error import mag_error_from_flux_over_error
 
 logger = logging.getLogger(__name__)
 
-_NS = "http://www.ivoa.net/xml/VOTable/v1.3"
-_UT_FILTER = "photDM:PhotometryFilter.identifier"
-_UT_FLUX = "photDM:PhotCal.zeroPoint.flux.value"
-_UT_MAG = "photDM:PhotCal.zeroPoint.referenceMagnitude.value"
-_UT_SYS = "photDM:PhotCal.magnitudeSystem.type"
-_UT_WAVE = "photDM:PhotometryFilter.spectralLocation.value"
+_NS = "http://www.ivoa.net/xml/VOTable/v1.3"  # the TAP download is parsed with ElementTree
 
 # Short Jy zero points and wavelengths from the reference light curves.
 # Filter Profile Service is the source of the magnitude-column flux zero point
@@ -126,7 +127,7 @@ def _arrays_from_votable(payload: bytes) -> dict[str, list[str] | str]:
 
 
 def votable_for_band(epoch: dict, band_code: str) -> bytes:
-    """Builds one band light curve VOTable from epoch-photometry arrays.
+    """Builds one band light curve VOTable from epoch-photometry arrays, through ``volightcurve``.
 
     Args:
         epoch (dict): ``source_id`` and archive array columns.
@@ -163,66 +164,45 @@ def votable_for_band(epoch: dict, band_code: str) -> bytes:
     ]
     snr_kept = [series[1][index] for index in kept]
     mag_err = mag_error_from_flux_over_error(snr_kept)
-    ET.register_namespace("", _NS)
-    root = ET.Element(f"{{{_NS}}}VOTABLE", {"version": "1.3"})
-    resource = ET.SubElement(root, f"{{{_NS}}}RESOURCE")
-    timesys = ET.SubElement(resource, f"{{{_NS}}}TIMESYS")
-    timesys.set("ID", "ts")
-    timesys.set("refposition", "BARYCENTER")
-    timesys.set("timeorigin", "2455197.5")
-    timesys.set("timescale", "TCB")
-    group = ET.SubElement(resource, f"{{{_NS}}}GROUP")
-    group.set("ID", "phot_def")
-    group.set("name", "photcal")
-    _param(group, "filterIdentifier", spec["filter_id"], utype=_UT_FILTER, arraysize="*")
-    _param(group, "zeroPointFlux", spec["zp_flux_jy"], utype=_UT_FLUX, unit="Jy", datatype="double")
-    _param(group, "magnitudeSystem", "Vega", utype=_UT_SYS, arraysize="*")
-    _param(
-        group,
-        "effectiveWavelength",
-        spec["wavelength_m"],
-        utype=_UT_WAVE,
-        unit="m",
-        datatype="double",
-    )
-    _param(
-        group,
-        "zeroPointReferenceMagnitude",
-        str(config.GAIA_AIP_ZERO_POINT_REFERENCE_MAGNITUDE),
-        utype=_UT_MAG,
-        unit="mag",
-        datatype="double",
-    )
     mag_id = spec["mag_out"]
-    fieldref = ET.SubElement(group, f"{{{_NS}}}FIELDref")
-    fieldref.set("ref", mag_id)
+    out = Table()
+    out[spec["time_out"]] = _column(series[0], kept, spec["time_out"], unit="d", ucd="time.epoch")
+    out[mag_id] = _column(series[2], kept, mag_id, unit="mag", ucd=spec["mag_ucd"])
+    out["mag_error"] = MaskedColumn(
+        np.ma.masked_invalid(np.array(mag_err, dtype=float)),
+        name="mag_error",
+        unit="mag",
+    )
+    out["mag_error"].info.meta = {"ucd": "stat.error;phot.mag"}
+    out[spec["snr_out"]] = _column(series[1], kept, spec["snr_out"], ucd="stat.snr;phot.flux")
+    for position, (_archive_name, out_name, ucd) in enumerate(spec["extra"], start=3):
+        out[out_name] = _column(series[position], kept, out_name, ucd=ucd)
 
-    table = ET.SubElement(resource, f"{{{_NS}}}TABLE")
-    table.set("name", f"Gaia DR3 {source_id} {spec['filter_id']}")
-    source = ET.SubElement(table, f"{{{_NS}}}PARAM")
-    source.set("name", "source_id")
-    source.set("datatype", "long")
-    source.set("value", source_id)
-    _field(table, spec["time_out"], "double", ucd="time.epoch", unit="d", ref="ts")
-    _field(table, mag_id, "double", ucd=spec["mag_ucd"], unit="mag", ref="phot_def", field_id=mag_id)
-    _field(table, "mag_error", "double", ucd="stat.error;phot.mag", unit="mag", ref="phot_def")
-    _field(table, spec["snr_out"], "double", ucd="stat.snr;phot.flux")
-    for _archive_name, out_name, ucd in spec["extra"]:
-        _field(table, out_name, "double", ucd=ucd)
-
-    data = ET.SubElement(table, f"{{{_NS}}}DATA")
-    tabledata = ET.SubElement(data, f"{{{_NS}}}TABLEDATA")
-    for row_index, index in enumerate(kept):
-        row = ET.SubElement(tabledata, f"{{{_NS}}}TR")
-        tokens = [series[0][index], series[2][index], _number(mag_err[row_index]), series[1][index]]
-        tokens.extend(values[index] for values in series[3:])
-        for token in tokens:
-            cell = ET.SubElement(row, f"{{{_NS}}}TD")
-            text = "" if token is None else str(token).strip()
-            if text.lower() == "nan":
-                text = ""
-            cell.text = text
-
+    calibration = PhotDM(
+        photcal=PhotCal(
+            zp_flux=float(spec["zp_flux_jy"]),
+            zp_flux_unit="Jy",
+            zp_mag=float(config.GAIA_AIP_ZERO_POINT_REFERENCE_MAGNITUDE),
+            zp_mag_unit="mag",
+            mag_sys="Vega",
+        ),
+        photometry_filter=PhotometryFilter(
+            filter_id=spec["filter_id"],
+            spectral_location=(float(spec["wavelength_m"]) * u.m),
+        ),
+    )
+    buffer = io.BytesIO()
+    write_vo_lightcurve(
+        buffer,
+        out,
+        f"Gaia DR3 {source_id} {spec['filter_id']}",
+        refposition="BARYCENTER",
+        timescale="TCB",
+        timeorigin=2455197.5,
+        binary=False,
+        photdms={mag_id: calibration, "mag_error": calibration},
+        table_params=[{"name": "source_id", "value": source_id, "datatype": "long"}],
+    )
     logger.info(
         "%s issued band=%s filter=%s n_rows=%s zp_flux=%s Jy zp_mag=%s",
         config.DISPLAY_NAME,
@@ -232,7 +212,36 @@ def votable_for_band(epoch: dict, band_code: str) -> bytes:
         spec["zp_flux_jy"],
         config.GAIA_AIP_ZERO_POINT_REFERENCE_MAGNITUDE,
     )
-    return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+    return buffer.getvalue()
+
+
+def _column(
+    tokens: list[str], kept: list[int], name: str, *, ucd: str, unit: str | None = None
+) -> MaskedColumn:
+    """Builds one double column from archive tokens; a NaN or blank token is masked.
+
+    Args:
+        tokens (list[str]): All tokens of the archive array.
+        kept (list[int]): Indices of the epochs that are issued.
+        name (str): Issued column name.
+        ucd (str): UCD of the column.
+        unit (str, optional): Unit of the column.
+
+    Returns:
+        astropy.table.MaskedColumn: Double column in the order of ``kept``.
+    """
+    values = []
+    mask = []
+    for index in kept:
+        text = "" if tokens[index] is None else str(tokens[index]).strip()
+        missing = _is_missing(text)
+        values.append(0.0 if missing else float(text))
+        mask.append(missing)
+    column = MaskedColumn(np.array(values, dtype=float), name=name, mask=mask)
+    if unit:
+        column.unit = unit
+    column.info.meta = {"ucd": ucd}
+    return column
 
 
 def enrich_votable(payload: bytes, *, band_code: str) -> bytes:
@@ -302,68 +311,3 @@ def _number(value: float) -> str:
     if value != value:
         return ""
     return repr(float(value))
-
-
-def _param(
-    parent: ET.Element,
-    name: str,
-    value: str,
-    *,
-    utype: str,
-    unit: str | None = None,
-    datatype: str = "char",
-    arraysize: str | None = None,
-) -> None:
-    """Appends one photcal PARAM.
-
-    Args:
-        parent (xml.etree.ElementTree.Element): Photcal GROUP.
-        name (str): PARAM name.
-        value (str): PARAM value.
-        utype (str): PhotDM utype.
-        unit (str, optional): Unit.
-        datatype (str): VOTable datatype.
-        arraysize (str, optional): Character arraysize.
-    """
-    param = ET.SubElement(parent, f"{{{_NS}}}PARAM")
-    param.set("name", name)
-    param.set("datatype", datatype)
-    param.set("value", value)
-    param.set("utype", utype)
-    if unit:
-        param.set("unit", unit)
-    if arraysize:
-        param.set("arraysize", arraysize)
-
-
-def _field(
-    table: ET.Element,
-    name: str,
-    datatype: str,
-    *,
-    ucd: str,
-    unit: str | None = None,
-    ref: str | None = None,
-    field_id: str | None = None,
-) -> None:
-    """Appends one FIELD.
-
-    Args:
-        table (xml.etree.ElementTree.Element): TABLE element.
-        name (str): Column name.
-        datatype (str): VOTable datatype.
-        ucd (str): Column UCD.
-        unit (str, optional): Unit.
-        ref (str, optional): Reference to a TIMESYS or photcal group.
-        field_id (str, optional): FIELD ID.
-    """
-    field = ET.SubElement(table, f"{{{_NS}}}FIELD")
-    field.set("name", name)
-    field.set("datatype", datatype)
-    field.set("ucd", ucd)
-    if unit:
-        field.set("unit", unit)
-    if ref:
-        field.set("ref", ref)
-    if field_id:
-        field.set("ID", field_id)
