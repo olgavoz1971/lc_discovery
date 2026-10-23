@@ -7,11 +7,11 @@ update the baseline on purpose. Nothing here changes a writer, and nothing uses 
 
 Cases (all ten providers; recorded products live in ``tests/data``):
 
-* Recorded as issued by Discovery: ``ztf`` (OID 1772216100025317, ZTF r), ``ogle_ocvs``
+* Recorded as issued by Discovery: ``ztf`` (OID 1772216100034775, ZTF r), ``ogle_ocvs``
   (OGLE-LMC-RRLYR-13820).
 * Recorded as the TAP service sends it, then passed through ``enrich_votable``: ``gaia_dr3_veb``,
   ``upjs_ts``, ``personal_ts`` (V band); ``gaia_dr3_ari`` and ``gaia_dr3_aip`` from the bundled samples.
-* Recorded as issued by Discovery after the unit fix: ``tess`` (TESS-SPOC, TIC 455790537, sector 16),
+* Recorded as issued by Discovery after the unit fix: ``tess`` (TESS-SPOC, TIC 455790537, sector 17),
   ``panstarrs1_dr2`` (PS1 165213463504091232, i).
 * ``asassn`` has no case: no natural product is available yet (the service does not answer).
 """
@@ -100,7 +100,7 @@ def _veb_raw() -> bytes:
 
 def _ztf_issued() -> bytes:
     """Returns the recorded ZTF product as Discovery issued it."""
-    return (_DATA / "ztf_oid_1772216100025317_zr_issued.vot").read_bytes()
+    return (_DATA / "ztf_oid_1772216100034775_zr_orig.xml").read_bytes()
 
 
 def _ogle_issued() -> bytes:
@@ -109,8 +109,8 @@ def _ogle_issued() -> bytes:
 
 
 def _tess_issued() -> bytes:
-    """Returns the recorded TESS-SPOC product (TIC 455790537, sector 16) as Discovery issued it."""
-    return (_DATA / "tess_spoc_sector16_orig.vot").read_bytes()
+    """Returns the recorded TESS-SPOC product (TIC 455790537, sector 17) as Discovery issued it."""
+    return (_DATA / "tess_spoc_sector17_orig.vot").read_bytes()
 
 
 def _gaia_aip_issued() -> bytes:
@@ -256,26 +256,26 @@ BASELINE: dict[str, dict] = {
             "pdcsap_flux_err": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
-                "zp_flux": (1.0, "1 / s"),
+                "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
             "sap_flux_err": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
-                "zp_flux": (1.0, "1 / s"),
+                "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
             "sap_bkg_err": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},
             "pdcsap_flux": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
-                "zp_flux": (1.0, "1 / s"),
+                "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
             "sap_flux": {
                 "filter": "TESS/TESS.Red",
                 "zp_mag": (20.44, "mag"),
-                "zp_flux": (1.0, "1 / s"),
+                "zp_flux": (1.0, "ct / s"),
                 "mag_sys": "Vega",
             },
             "sap_bkg": {"filter": "TESS/TESS.Red", "zp_mag": None, "zp_flux": None, "mag_sys": "Vega"},

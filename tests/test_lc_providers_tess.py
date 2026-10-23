@@ -379,7 +379,7 @@ def test_contradicting_time_system_raises():
 
 
 def test_spoc_issued_electron_flux_is_valid_vounits_in_a_vounits_capable_table():
-    """Electrons per second is issued as ``s**-1`` and the table declares VOTable 1.4.
+    """Electrons per second is issued as ``count/s`` and the table declares VOTable 1.4.
 
     VOUnits 1.1 has no electron, and Astropy reads VOUnits only from VOTable 1.4 on,
     so both the unit text and the version matter for a strict reader.
@@ -400,4 +400,4 @@ def test_spoc_issued_electron_flux_is_valid_vounits_in_a_vounits_capable_table()
     assert 'version="1.4"' in xml
     assert "electron" not in xml
     assert 'name="zeroPointFlux"' in xml
-    assert xml.count('unit="s**-1"') >= 4
+    assert xml.count('unit="count/s"') >= 4

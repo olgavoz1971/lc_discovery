@@ -25,6 +25,10 @@ EXPORT_PROFILE = PROVIDER_ID
 MAX_DISCOVERY_SEARCH_RADIUS_DEG = 1.0
 
 OBJECTS_TABLE = "ztf_objects_dr24"
+# Columns that describe the exposure, not the source. The server marks them with a photometric
+# UCD (``limitmag`` is ``phot.mag;...``); the product drops the ``phot.*`` words so that no
+# reader takes them for photometry and no calibration group is needed for them.
+NON_PHOTOMETRY_COLUMNS = frozenset({"limitmag"})
 ZTF_SURVEY = "ZTF"
 ZTF_PIPELINE = "ZTF IRSA Light Curves"
 

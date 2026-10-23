@@ -188,3 +188,13 @@ def test_fetch_lightcurve_builds_mag_native_volc(monkeypatch, provider):
     assert "catflag" in volc.colnames
     assert list(volc.table["oid"]) == [oid, oid]
     assert volc.photdms["mag_err"].photcal is volc.photdms["mag"].photcal
+
+
+def test_limitmag_is_issued_without_the_photometric_words():
+    """``limitmag`` keeps the server UCD words except ``phot.*``; other columns are untouched."""
+    from lc_discovery.providers.ztf.fetch_metadata import _issued_ucd
+
+    server = "phot.mag;em.opt;stat.max;instr.sensitivity;obs.exposure"
+    assert _issued_ucd("limitmag", server) == "em.opt;stat.max;instr.sensitivity;obs.exposure"
+    assert _issued_ucd("mag", "phot.mag;em.opt") == "phot.mag;em.opt"
+    assert _issued_ucd("limitmag", None) is None

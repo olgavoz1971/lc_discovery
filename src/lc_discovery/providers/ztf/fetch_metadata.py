@@ -143,7 +143,7 @@ def votable_from_epochs(
             table,
             out_name,
             str(remote.get("datatype") or "double"),
-            ucd=remote.get("ucd") or None,
+            ucd=_issued_ucd(out_name, remote.get("ucd")),
             unit=remote.get("unit") or None,
             ref=ref,
             field_id=field_id or out_name,
@@ -164,6 +164,27 @@ def votable_from_epochs(
         time_source,
     )
     return ET.tostring(root, encoding="utf-8", xml_declaration=True)
+
+
+def _issued_ucd(column: str, ucd: str | None) -> str | None:
+    """Returns the UCD to issue for a column.
+
+    A column of ``config.NON_PHOTOMETRY_COLUMNS`` keeps the words the server sent
+    except the ``phot.*`` ones (``limitmag``: ``instr.sensitivity`` stays, ``phot.mag`` goes).
+
+    Args:
+        column (str): Issued column name.
+        ucd (str, optional): UCD as the server sent it.
+
+    Returns:
+        str or None: UCD for the FIELD, or ``None`` when there is none.
+    """
+    if not ucd:
+        return None
+    if column not in config.NON_PHOTOMETRY_COLUMNS:
+        return ucd
+    words = [word for word in ucd.split(";") if not word.strip().startswith("phot.")]
+    return ";".join(words) or None
 
 
 def _cell(value, *, integral: bool = False) -> str:
