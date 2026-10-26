@@ -36,6 +36,14 @@ Use the tools in `tools/` to produce the values (table in section 2.3 of the pro
 
 Implement `search_catalog` with cone, name, and/or archive id according to `MissionCapabilities`. Do not invent collection names or filter identifiers. Opaque `lc_key` via package `lc_key` helpers inside the plugin only. Extra result-table columns are a declared `(field, header)` list on the provider (default none). Do not add mission-specific names to the core catalogue schema.
 
+## Time, units and the VOTable writer
+
+Read the skill of every package this one depends on (`volightcurve`: `.cursor/skills/volightcurve/SKILL.md`) before you write issuing code.
+
+- **Source-agnostic time.** Issue the archive's own time values together with a declared `TIMESYS` (`timeorigin`, `timescale`, `refposition`). Do not shift the values to a mission convention; where an archive convention is converted (TESS BTJD to MJD), the provider note says so and the origin is declared. Do not leave a time column without a declared origin.
+- **Units.** Keep the archive's unit text. A unit that VOUnits does not support is issued as given (and only warns); never drop or rewrite it silently. Electrons per second are issued as `count/s` (VOUnits 1.1 has no electron).
+- **Build the VOTable with `volightcurve.write_vo_lightcurve`** (astropy table, one `PhotDM` per calibration, `table_params` for archive items). Do not hand-write VOTable XML. A provider that only patches the archive's own product may keep its patching code.
+
 ## Fetch
 
 `fetch_lightcurve` returns enriched bytes. Keep every science photometry
