@@ -90,8 +90,12 @@ def _photdms(votable, table) -> dict[str, _PhotDm]:
         filter_id = _param_value(group, params_by_id, "photDM:PhotometryFilter.identifier")
         zp_flux = _param_value(group, params_by_id, "photDM:PhotCal.zeroPoint.flux.value")
         zp_mag = _param_value(
-            group, params_by_id, "photDM:PhotCal.zeroPoint.referenceMagnitude.value"
+            group, params_by_id, "photDM:PhotCal.zeroPoint.referenceMagnitudeValue"
         )
+        if zp_mag is None:
+            zp_mag = _param_value(
+                group, params_by_id, "photDM:PhotCal.zeroPoint.referenceMagnitude.value"
+            )
         if filter_id is None and zp_flux is None and zp_mag is None:
             continue
         photcal = _PhotCal(zp_mag, zp_flux)

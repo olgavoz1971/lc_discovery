@@ -13,6 +13,7 @@ from volightcurve import PhotCal, PhotDM, PhotometryFilter, write_vo_lightcurve
 
 from lc_discovery.providers.tess import config
 from lc_discovery.providers.tess.columns import (
+    CALIBRATION_NORMALIZED_CATALOG,
     ROLE_BACKGROUND,
     ROLE_BACKGROUND_ERROR,
     ZP_MAG_GAIAMAG,
@@ -29,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 UCD_FLUX = "phot.flux"
 UCD_FLUX_ERROR = "stat.error;phot.flux"
+# Normalised (relative, dimensionless) flux: the ratio marks the scale (no physical unit).
+UCD_FLUX_RATIO = "phot.flux;arith.ratio"
+UCD_FLUX_ERROR_RATIO = "stat.error;phot.flux;arith.ratio"
 UCD_MAG = "phot.mag"
 UCD_MAG_ERROR = "stat.error;phot.mag"
 UCD_BACKGROUND = "instr.background"
@@ -127,6 +131,60 @@ def _issue_unit(unit: str | None):
         return u.UnrecognizedUnit(str(unit))
 
 
+def _issue_unit_for(file_unit: str | None, calibration: str):
+    """Returns the unit to write for a column of a reviewed pipeline.
+
+    A column of a normalised pipeline product (QLP, TARS, TGLC, ...) that carries no
+    unit is a relative flux, which the registry records as dimensionless. It is written
+    as dimensionless explicitly, so that it agrees with the dimensionless zero point of
+    its group. A unit that the product declares is never replaced.
+
+    Args:
+        file_unit (str, optional): Unit read from the product.
+        calibration (str): ``CALIBRATION_*`` value of the registry entry.
+
+    Returns:
+        astropy.units.UnitBase or None: Unit for the FIELD, or ``None``.
+    """
+    if file_unit is None and calibration == CALIBRATION_NORMALIZED_CATALOG:
+        return u.dimensionless_unscaled
+    return _issue_unit(file_unit)
+
+
+def _normalised_zero_point_note(issued_columns, photcal_groups) -> str:
+    """Words what the zero point of a normalised flux column means.
+
+    A relative flux has no physical unit. Its zero point (flux 1, dimensionless) is tied
+    to a reference magnitude taken from the product header (``TESSMAG`` or ``GAIAMAG``).
+    That is an anchor, not a calibration made by the pipeline, so magnitudes derived from
+    the column are relative to it.
+
+    Args:
+        issued_columns (list[tuple]): ``(name, values, ucd, unit, group_id)`` rows.
+        photcal_groups (dict[str, dict]): PhotCal payload per group id.
+
+    Returns:
+        str: One sentence per such column (leading space), or an empty string.
+    """
+    sentences = []
+    for name, _values, ucd, _unit, group_id in issued_columns:
+        payload = photcal_groups.get(group_id) if group_id else None
+        if (
+            not payload
+            or not ucd
+            or "arith.ratio" not in ucd
+            or "stat.error" in ucd
+            or payload.get("zp_mag") is None
+        ):
+            continue
+        sentences.append(
+            f" Column {name} is a relative, dimensionless flux: flux 1 corresponds to "
+            f"magnitude {float(payload['zp_mag']):g}, a reference magnitude from the "
+            "product header; magnitudes derived from it are relative to that anchor."
+        )
+    return "".join(sentences)
+
+
 def _issued_columns_known_author(lc, author: str, sector: int):
     """Builds issued columns and PhotCal groups for a registered author.
 
@@ -151,8 +209,15 @@ def _issued_columns_known_author(lc, author: str, sector: int):
         file_unit = _column_unit_str(lc, flux_name)
         group_id = _photcal_id_for_flux(author, spec)
         photcal_groups[group_id] = _photcal_payload(author, spec, lc, file_unit)
+        normalised = spec.calibration == CALIBRATION_NORMALIZED_CATALOG
         issued_columns.append(
-            (flux_name, flux_values, UCD_FLUX, _issue_unit(file_unit), group_id)
+            (
+                flux_name,
+                flux_values,
+                UCD_FLUX_RATIO if normalised else UCD_FLUX,
+                _issue_unit_for(file_unit, spec.calibration),
+                group_id,
+            )
         )
         if spec.flux_err_col:
             err_name = normalize_lc_column(spec.flux_err_col)
@@ -162,8 +227,8 @@ def _issued_columns_known_author(lc, author: str, sector: int):
                     (
                         err_name,
                         err_values,
-                        UCD_FLUX_ERROR,
-                        _issue_unit(_column_unit_str(lc, err_name)),
+                        UCD_FLUX_ERROR_RATIO if normalised else UCD_FLUX_ERROR,
+                        _issue_unit_for(_column_unit_str(lc, err_name), spec.calibration),
                         group_id,
                     )
                 )
@@ -180,7 +245,7 @@ def _issued_columns_known_author(lc, author: str, sector: int):
                     bkg_name,
                     bkg_values,
                     UCD_BACKGROUND,
-                    _issue_unit(_column_unit_str(lc, bkg_name)),
+                    _issue_unit_for(_column_unit_str(lc, bkg_name), bkg.unit_type),
                     bkg_group,
                 )
             )
@@ -193,7 +258,7 @@ def _issued_columns_known_author(lc, author: str, sector: int):
                             bkg_err_name,
                             bkg_err_values,
                             UCD_BACKGROUND_ERROR,
-                            _issue_unit(_column_unit_str(lc, bkg_err_name)),
+                            _issue_unit_for(_column_unit_str(lc, bkg_err_name), bkg.unit_type),
                             bkg_group,
                         )
                     )
@@ -654,6 +719,7 @@ def _votable_xml(
             "issued. Roles follow Lightkurve's FLUX_ORIGIN; see docs/providers/tess.md."
         )
     )
+    description += _normalised_zero_point_note(issued_columns, photcal_groups)
     table_params = [
         {"name": "tic", "value": int(tic), "datatype": "long"},
         {"name": "sector", "value": int(sector), "datatype": "int"},

@@ -260,6 +260,42 @@ def test_qlp_uses_tessmag_not_2044():
     assert issued.photdms["sap_flux"].photcal.zp_mag.value != pytest.approx(20.44)
 
 
+def test_qlp_normalised_flux_is_written_dimensionless_and_converts():
+    """A unitless QLP flux is issued as dimensionless, agreeing with its zero point.
+
+    The flux and error carry the relative-scale UCD, the description words what the zero
+    point means, and the product converts to magnitudes without declaring any unit.
+    """
+    import io
+
+    from volightcurve import VOLightCurve
+
+    lc = _FakeLC(
+        ["time", "sap_flux", "sap_flux_err"],
+        {
+            "time": np.array([1400.0, 1400.1, 1400.2]),
+            "sap_flux": np.array([1.0, 0.9, 1.1]),
+            "sap_flux_err": np.array([0.01, 0.01, 0.01]),
+        },
+        meta={"TESSMAG": 11.2032},
+        author="QLP",
+        sector=97,
+    )
+    payload = votable_from_lightcurve(lc, tic=2, sector=97, author="QLP", exptime=200.0)
+    text = payload.decode() if isinstance(payload, bytes) else payload
+    assert 'ucd="phot.flux;arith.ratio"' in text
+    assert 'ucd="stat.error;phot.flux;arith.ratio"' in text
+    flat = " ".join(text.split())
+    assert "relative, dimensionless flux" in flat
+    assert "magnitude 11.2032" in flat
+
+    volc = VOLightCurve(io.BytesIO(payload if isinstance(payload, bytes) else payload.encode()))
+    assert volc.table["sap_flux"].unit is not None
+    assert volc.conversion_problems("sap_flux") == []
+    volc.add_mag_column_from_flux("sap_flux", "m")
+    assert float(volc.table["m"][0]) == pytest.approx(11.2032)
+
+
 def test_fetch_lightcurve_uses_download(monkeypatch, provider):
     """fetch_lightcurve issues VOTable bytes from a mocked download."""
     lc = _FakeLC(

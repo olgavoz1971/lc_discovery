@@ -191,6 +191,21 @@ product**, for known and unknown authors alike:
 Background-role columns never get 20.44, even when the unit is electron
 s-1.
 
+**Normalised (relative) flux.** QLP, TARS and TGLC fluxes have no physical
+unit; the registry records them as normalised. For these reviewed pipelines
+the flux, flux error and background columns that carry no unit in the product
+are written with the dimensionless unit `1`, so the FIELD agrees with the
+dimensionless zero point of its group (an absent unit would mean "unknown").
+A unit that the product declares is never replaced, and an unreviewed author
+is not touched. The flux and flux error carry the UCD
+`phot.flux;arith.ratio` and `stat.error;phot.flux;arith.ratio` (the relative
+scale; no counts, no electrons). The zero point is flux `1` (dimensionless)
+with the reference magnitude `TESSMAG` (QLP, TARS) or `GAIAMAG` (TGLC). It is
+an anchor taken from the product header, not a calibration made by the
+pipeline: the table description says so ("flux 1 corresponds to magnitude
+...; magnitudes derived from it are relative to that anchor"). Never write
+`ct/s` or `e-/s` for these columns.
+
 **Column types.** Every issued column keeps its real datatype. Numeric
 columns are `double`/`int`. Non-numeric columns (strings, flags that cannot
 be read as numbers) are issued with their true VOTable datatype, not coerced
