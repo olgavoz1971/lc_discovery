@@ -153,7 +153,9 @@ when no mission id is available.
 - Call any host module to build the VOTable (build the XML in the plugin).
 
 The caller's orchestration (name parsing, Simbad query, retry order) is
-outside this package.
+outside this package. The retry order includes the Simbad mirrors; that rule is in
+the `lc-discovery` skill ("Simbad mirrors"), not in a mission plugin. No provider
+note needs a mirror.
 
 ---
 

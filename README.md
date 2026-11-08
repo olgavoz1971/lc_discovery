@@ -200,7 +200,7 @@ votable = parse(io.BytesIO(payload))
 `scripts/vsx_resolve.py` finds a variable star in the AAVSO VSX index when Simbad cannot
 resolve its name. `scripts/simbad_resolve.py` resolves a name, or lists the objects around a
 position, in Simbad and returns what `archive_id_from_identifiers` needs (extra `scripts`, needs
-`astroquery`). The skill `lc-discovery` describes when and how to use them.
+`astroquery`). The Simbad helper does not choose a mirror: the caller gives `--server` (or sets `Simbad.server`) and a wall-clock limit, as described in the `lc-discovery` skill, section "Simbad mirrors". The skill describes when and how to use the helpers.
 
 ## What is not public
 

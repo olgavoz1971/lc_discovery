@@ -39,15 +39,25 @@ Search kinds: cone (`ra_deg`, `dec_deg`, `radius_arcsec`), name (`object_name`),
 A user gives a name such as `AA And`. Suggested order for each mission:
 
 1. Try the mission directly: `resolve_target(mission, name)` (it recognises its own id spellings, such as `TIC 123` or a Gaia number), then `search(mission, archive_id=match.archive_id)`.
-2. If the mission does not recognise the name, ask Simbad (astroquery or pyvo; the package core does not do it). You may use the helper `scripts/simbad_resolve.py` (`resolve_simbad_name(name)`; extra `scripts`); it returns the main id, the identifier list and the position, and raises `SimbadNotResolvedError` for an unknown name without any fallback. Keep the identifier list and the coordinates.
+2. If the mission does not recognise the name, ask Simbad (astroquery or pyvo; the package core does not do it). You may use the helper `scripts/simbad_resolve.py` (`resolve_simbad_name(name)`; extra `scripts`); it returns the main id, the identifier list and the position, and raises `SimbadNotResolvedError` for an unknown name. There is no other name resolver behind it (not VSX, not a guessed position); the Simbad mirror is a separate matter, see "Simbad mirrors" below. Keep the identifier list and the coordinates.
 3. Call `archive_id_from_identifiers(mission, identifiers, ...)`. It picks the mission's id from the Simbad list. The line "Id lookup" in the mission `description` says which Simbad identifier it uses.
 4. If there is still no id (or the description says Simbad does not list it), use a cone search at the Simbad position, only where `supports_cone_search` is true. Say that this is a position match and may include neighbouring stars.
 
 Tell the user which route found each result.
 
+### Simbad mirrors
+
+Simbad is served from more than one mirror. `astroquery.simbad.conf.servers_list` names them; today `simbad.cds.unistra.fr` (the default) and `simbad.harvard.edu`. The helper uses the shared `Simbad` object, stays on its current mirror and never tries another one by itself. You choose the mirror and you limit the waiting time.
+
+- **Choose the mirror first.** Give `--server <host>` to the script, or set `Simbad.server` to one host of `servers_list` in the same process before `resolve_simbad_name` or `find_simbad_objects`. Do this before setting `Simbad.timeout` (the setter contacts the current mirror's TAP service) and before any other access. A subprocess must set it inside its own process.
+- **Limit each attempt yourself.** `Simbad.timeout` is the server-side limit of an asynchronous TAP job; it does not stop a synchronous query to a mirror that never answers, which waits until the process is stopped. Put a wall-clock limit around the whole attempt, for example `timeout 15 python scripts/simbad_resolve.py --server simbad.harvard.edu name "NSV 807"` (15 s is enough to notice a dead mirror).
+- **Answer or failure.** Exit code 0: answered. Exit code 3: the mirror answered and the name or position is unknown (`SimbadNotResolvedError`): stop, do not ask another mirror. Exit code 4 or 124 (limit reached): the mirror did not answer, which is a network failure and not "not found": record the mirror and the error, then ask the next host of `servers_list`. Try the default first, then the others.
+- **If every mirror fails,** report each mirror with its error and stop. That is not "name not found", and it is not a reason to ask VSX. Tell the user which mirror answered.
+- Do not hardcode one mirror: the default may answer again, and another can fail later.
+
 ### Variable stars that Simbad does not know
 
-Some variable stars have a designation Simbad cannot resolve (for example `TCP J23580961+5502508`, or recent discoveries). If step 2 gives no result for a variable star, ask the AAVSO VSX index before giving up. The package provides a helper that you can run or copy: `scripts/vsx_resolve.py` (not public API, not imported by the package).
+Some variable stars have a designation Simbad cannot resolve (for example `TCP J23580961+5502508`, or recent discoveries). If step 2 gives a live Simbad answer that the name is unknown (exit code 3, not a mirror outage), ask the AAVSO VSX index before giving up. The package provides a helper that you can run or copy: `scripts/vsx_resolve.py` (not public API, not imported by the package).
 
 ```bash
 python scripts/vsx_resolve.py "TCP J23580961+5502508"   # prints the VSX record as JSON
@@ -56,7 +66,7 @@ python scripts/vsx_resolve.py "TCP J23580961+5502508"   # prints the VSX record 
 What it does: one request to `https://vsx.aavso.org/index.php?view=api.object&ident=<name>`, XML answer, returns the VSX name, J2000 position, variability type, period, epoch and magnitude range. An unknown name raises `VsxNotResolvedError`; tell the user the name is not in VSX either and stop, do not guess a position.
 
 Then continue like this:
-1. **Get a Simbad name from the position.** Run `find_simbad_objects(ra, dec, radius_arcsec=5)` from `scripts/simbad_resolve.py` (or your own Simbad cone search) at the VSX RA and Dec. It returns every object inside the radius, nearest first, with separations, main ids and identifier lists; it fails if there is none, or if there are more than `max_candidates` (reduce the radius). Take the `main_id` and the identifier list of the chosen object. For the example the answer is `Gaia DR3 1993876650919517440`.
+1. **Get a Simbad name from the position.** Run `find_simbad_objects(ra, dec, radius_arcsec=5)` from `scripts/simbad_resolve.py` (or your own Simbad cone search) at the VSX RA and Dec; the mirror rule of "Simbad mirrors" applies to it too. It returns every object inside the radius, nearest first, with separations, main ids and identifier lists; it fails if there is none, or if there are more than `max_candidates` (reduce the radius). Take the `main_id` and the identifier list of the chosen object. For the example the answer is `Gaia DR3 1993876650919517440`.
 2. Pass the identifiers to `archive_id_from_identifiers(...)` as in step 3 above, or use a cone search on the missions at the VSX position (step 4 above).
 3. **Zero or several Simbad objects:** show the candidates with their separations and ask the user which one is meant. Do not pick silently, especially in crowded fields.
 4. **Report to the user:** that the position came from VSX (not Simbad), the VSX name, type and period, and the separation of the Simbad match. VSX positions can be less accurate than Gaia, so say so when a cone search finds nothing.

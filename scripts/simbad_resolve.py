@@ -15,6 +15,19 @@ Behaviour:
       their separations. The caller (or the user) decides which one is meant; this is
       especially important in crowded fields.
     * Network failures are raised as they are, not reported as "not found".
+    * The helper uses astroquery's shared ``Simbad`` object and stays on its current mirror
+      (by default the CDS server). It never tries another mirror by itself. The caller picks
+      the mirror: in a process of its own, set ``Simbad.server`` to a host from
+      ``astroquery.simbad.conf.servers_list`` before calling the functions, or give
+      ``--server`` on the command line (it is set before any other access). The caller also
+      imposes its own wall-clock limit (``Simbad.timeout`` does not stop a query that never
+      answers; setting it contacts the current mirror, so set ``server`` first). See the
+      ``lc-discovery`` skill, section "Simbad mirrors".
+    * Command line exit codes: 0 answered; 3 the mirror answered and the name or position is
+      unknown (``SimbadNotResolvedError``: do not ask another mirror); 4 the mirror did not
+      answer (network failure: the caller may ask the next mirror); 1 any other error. A
+      wall-clock limit from the caller (for example ``timeout 15 python ...``) ends with 124,
+      which is also a failure of the mirror, not an answer.
 """
 
 from __future__ import annotations
@@ -186,10 +199,40 @@ def find_simbad_objects(
     return found
 
 
-def main() -> None:
-    """Command line entry point: resolves a name or a position and writes JSON."""
+EXIT_ANSWERED = 0
+EXIT_NOT_RESOLVED = 3
+EXIT_NETWORK_FAILURE = 4
+
+
+def _network_errors() -> tuple[type[BaseException], ...]:
+    """Returns the exception types that mean "the mirror did not answer".
+
+    Returns:
+        Tuple of exception classes: ``OSError`` (covers ``requests`` connection and
+        timeout errors) and the PyVO service error.
+    """
+    from pyvo.dal import DALServiceError
+
+    return (OSError, DALServiceError)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Command line entry point: resolves a name or a position and writes JSON.
+
+    Args:
+        argv: Arguments without the program name; ``None`` reads ``sys.argv``.
+
+    Returns:
+        Exit code: 0 answered, 3 not found (the mirror answered), 4 network failure.
+    """
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument(
+        "--server",
+        default=None,
+        help="Simbad mirror, one host of astroquery.simbad.conf.servers_list "
+        "(set before any other access); default: astroquery's current mirror",
+    )
     by_name = sub.add_parser("name", help="resolve a name")
     by_name.add_argument("name")
     by_position = sub.add_parser("position", help="list objects around a position")
@@ -197,17 +240,30 @@ def main() -> None:
     by_position.add_argument("dec_deg", type=float)
     by_position.add_argument("--radius-arcsec", type=float, default=DEFAULT_RADIUS_ARCSEC)
     by_position.add_argument("--max-candidates", type=int, default=DEFAULT_MAX_CANDIDATES)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
-    if args.command == "name":
-        output = asdict(resolve_simbad_name(args.name))
-    else:
-        found = find_simbad_objects(
-            args.ra_deg, args.dec_deg, args.radius_arcsec, args.max_candidates
-        )
-        output = [asdict(candidate) for candidate in found]
+    from astroquery.simbad import Simbad
+
+    if args.server is not None:
+        Simbad.server = args.server
+    logger.info("Simbad mirror: %s", Simbad.server)
+    try:
+        if args.command == "name":
+            output = asdict(resolve_simbad_name(args.name))
+        else:
+            found = find_simbad_objects(
+                args.ra_deg, args.dec_deg, args.radius_arcsec, args.max_candidates
+            )
+            output = [asdict(candidate) for candidate in found]
+    except SimbadNotResolvedError as error:
+        sys.stderr.write(f"Simbad ({Simbad.server}) answered: {error}\n")
+        return EXIT_NOT_RESOLVED
+    except _network_errors() as error:
+        sys.stderr.write(f"Simbad ({Simbad.server}) did not answer: {error!r}\n")
+        return EXIT_NETWORK_FAILURE
     sys.stdout.write(json.dumps(output, indent=2) + "\n")
+    return EXIT_ANSWERED
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
